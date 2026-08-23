@@ -124,12 +124,19 @@ def select(
             continue
 
         customer_id = trigger.get("customer_id")
+        customer = store.get("customer", customer_id) if customer_id else None
+        # A customer-scoped trigger without its customer context has nobody to
+        # write to. Sending anyway addresses the shop owner with copy meant for
+        # their customer, which reads as a mistake because it is one.
+        if customer_id and not customer:
+            continue
+
         candidates.append(
             Candidate(
                 trigger=trigger,
                 merchant=merchant,
                 category=category,
-                customer=store.get("customer", customer_id) if customer_id else None,
+                customer=customer,
                 previous_merchant=stored_merchant.previous_payload,
             )
         )

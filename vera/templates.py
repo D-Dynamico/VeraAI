@@ -24,6 +24,19 @@ SHOP_WORD = {
 # WhatsApp has no paragraph tag; a blank line is the only layout tool.
 BLOCK_SEPARATOR = "\n\n"
 
+# Kinds whose copy speaks to a customer. Without a customer context there is
+# nothing to send, and the merchant must not receive it by default.
+CUSTOMER_KINDS = frozenset({
+    "recall_due",
+    "appointment_tomorrow",
+    "chronic_refill_due",
+    "customer_lapsed_soft",
+    "customer_lapsed_hard",
+    "trial_followup",
+    "wedding_package_followup",
+})
+
+
 # Kinds where a Hindi lead-in is natural for a customer who mixes languages.
 HINDI_CLAUSE = {
     "booking": "Aapke liye slot rakh dein?",
@@ -85,23 +98,43 @@ def _payload(pack: FactPack, key: str, default: Any = None) -> Any:
     return pack.trigger_payload.get(key, default)
 
 
-# Metric names arrive as field names. A shop owner reads plain words.
+# Metric names arrive as field names. A shop owner reads plain words, and the
+# words have to fit the sentence - "your people finding you on Google are down"
+# is what a label map alone produces, so each metric carries its own sentence.
 METRIC_WORDS = {
     "review_count": "reviews",
     "reviews": "reviews",
     "calls": "calls",
-    "views": "people finding you on Google",
-    "directions": "people asking for directions",
+    "views": "views on Google",
+    "directions": "direction requests",
     "leads": "enquiries",
     "footfall": "walk-ins",
     "orders": "orders",
     "members": "members",
 }
 
+MOVEMENT_SENTENCES = {
+    "views": "{pct}% fewer people found you on Google this week",
+    "directions": "{pct}% fewer people asked for directions this week",
+}
+RISING_SENTENCES = {
+    "views": "{pct}% more people found you on Google this week",
+    "directions": "{pct}% more people asked for directions this week",
+}
+
 
 def _metric_label(raw: Any, default: str) -> str:
     key = str(raw or default).strip().lower()
     return METRIC_WORDS.get(key, key.replace("_", " "))
+
+
+def _movement_sentence(raw: Any, default: str, percent: int, rising: bool) -> str:
+    key = str(raw or default).strip().lower()
+    frames = RISING_SENTENCES if rising else MOVEMENT_SENTENCES
+    if key in frames:
+        return frames[key].format(pct=percent)
+    direction = "up" if rising else "down"
+    return f"your {_metric_label(key, default)} are {direction} {percent}% this week"
 
 
 # --- merchant-facing builders -------------------------------------------------
@@ -269,7 +302,7 @@ def _perf_dip(pack: FactPack, proof: Fact | None) -> Draft:
     if delta:
         drop = round(abs(float(delta)) * 100)
         pack.license_numbers(drop)
-        anchor = f"your {metric} are down {drop}% this week"
+        anchor = _movement_sentence(_payload(pack, "metric"), "calls", drop, rising=False)
     else:
         anchor = f"your {metric} have slipped this week"
     return Draft(
@@ -288,7 +321,7 @@ def _perf_spike(pack: FactPack, proof: Fact | None) -> Draft:
     if delta:
         rise = round(abs(float(delta)) * 100)
         pack.license_numbers(rise)
-        anchor = f"your {metric} are up {rise}% this week"
+        anchor = _movement_sentence(_payload(pack, "metric"), "views", rise, rising=True)
     else:
         anchor = f"your {metric} are climbing this week"
     return Draft(
@@ -337,7 +370,7 @@ def _seasonal_perf_dip(pack: FactPack, proof: Fact | None) -> Draft:
     if delta:
         drop = round(abs(float(delta)) * 100)
         pack.license_numbers(drop)
-        anchor = f"your {metric} are down {drop}% — and this is the normal dip for this time of year"
+        anchor = f"{_movement_sentence(_payload(pack, 'metric'), 'footfall', drop, rising=False)}, and this is the normal dip for this time of year"
     else:
         anchor = f"your {metric} are down, and this is the normal dip for this time of year"
     return Draft(
@@ -540,6 +573,9 @@ def plan_message(pack: FactPack, cohort: Cohort | None = None) -> tuple[Draft, F
     proof = social_proof_fact(cohort, {"performance": pack.performance}, _shop_word(pack)) if cohort else None
     if proof:
         pack.license(proof)
+
+    if pack.trigger_kind in CUSTOMER_KINDS and not pack.is_customer_facing:
+        return None
 
     builder = BUILDERS.get(pack.trigger_kind, _generic)
     return builder(pack, proof), proof
