@@ -236,10 +236,10 @@ def build_fact_pack(
     pack.review_theme = themes[0] if themes else None
 
     pack.license(*pack.signal_facts, *pack.changed_metrics)
-    pack.license_numbers(*performance.values(), pack.offer_title or "")
+    pack.license_numbers(*performance.values(), pack.offer_title or "", pack.business_name)
     pack.license_numbers(*[value for value in pack.trigger_payload.values() if not isinstance(value, (dict, list))])
     if pack.digest_item:
-        pack.license_numbers(pack.digest_item.get("source", ""), pack.digest_item.get("title", ""), pack.digest_item.get("trial_n", ""))
+        pack.license_numbers(*[value for value in pack.digest_item.values() if not isinstance(value, (dict, list))])
     if pack.review_theme:
         pack.license_numbers(pack.review_theme.get("occurrences_30d", ""))
     if performance.get("views"):
