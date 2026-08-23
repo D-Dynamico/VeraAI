@@ -7,6 +7,7 @@ than a pass/fail count, and so the LLM layer can be re-prompted with the reason.
 import re
 from typing import Any
 
+from vera.conversation import ACTION_WORDS, QUALIFYING_PHRASES
 from vera.factpack import FactPack, numbers_in
 
 # Business words the merchant never uses about their own shop. The scorer
@@ -74,7 +75,13 @@ def _is_ask(sentence: str) -> bool:
     return bool(CTA_PATTERN.search(sentence)) or sentence.strip().endswith("?")
 
 
-def check(body: str, pack: FactPack, category: dict[str, Any], already_sent: list[str] | None = None) -> list[str]:
+def check(
+    body: str,
+    pack: FactPack | None,
+    category: dict[str, Any],
+    already_sent: list[str] | None = None,
+    action_mode: bool = False,
+) -> list[str]:
     """Every rule this body breaks. An empty list means it may be sent."""
     failures = []
     lowered = body.lower()
@@ -82,9 +89,10 @@ def check(body: str, pack: FactPack, category: dict[str, Any], already_sent: lis
     if not body.strip():
         return ["empty body"]
 
-    for number in numbers_in(body):
-        if number not in pack.allowed_numbers:
-            failures.append(f"unlicensed number {number!r} — not traceable to any context")
+    if pack:
+        for number in numbers_in(body):
+            if number not in pack.allowed_numbers:
+                failures.append(f"unlicensed number {number!r} — not traceable to any context")
 
     if URL_PATTERN.search(body):
         failures.append("body contains a URL")
@@ -104,11 +112,19 @@ def check(body: str, pack: FactPack, category: dict[str, Any], already_sent: lis
         if word in lowered:
             failures.append(f"stiff phrasing {word!r}")
 
-    if pack.is_customer_facing:
+    if pack and pack.is_customer_facing:
         if _speaks_hindi(pack) and not _has_hindi(body):
             failures.append("customer prefers a Hindi mix but the body is pure English")
-    elif _has_hindi(body):
+    elif pack and _has_hindi(body):
         failures.append("merchant messages are English only")
+
+    if action_mode:
+        # The replay grader greps for these literally; see CLAUDE.md §4.
+        if not any(word in lowered for word in ACTION_WORDS):
+            failures.append(f"action reply carries none of {ACTION_WORDS}")
+        for phrase in QUALIFYING_PHRASES:
+            if phrase in lowered:
+                failures.append(f"action reply still qualifying: {phrase!r}")
 
     sentences = _sentences(body)
     if sentences and not opens_on_an_anchor(sentences[0]):

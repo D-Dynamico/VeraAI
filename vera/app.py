@@ -7,10 +7,12 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from vera.conversation import ConversationStore, respond
 from vera.store import VALID_SCOPES, ContextStore
 
 app = FastAPI()
 store = ContextStore()
+conversations = ConversationStore()
 started_at = time.time()
 
 METADATA = {
@@ -92,14 +94,15 @@ def tick(request: TickRequest) -> dict[str, Any]:
 
 @app.post("/v1/reply")
 def reply(request: ReplyRequest) -> dict[str, Any]:
-    return {
-        "action": "wait",
-        "wait_seconds": 300,
-        "rationale": "Reply handling is not built yet; holding rather than sending an unconsidered message",
-    }
+    state = conversations.conversation(request.conversation_id, request.merchant_id, request.customer_id)
+    memory = conversations.partner(request.merchant_id, request.customer_id)
+    if state.ended or memory.opted_out:
+        return {"action": "end", "rationale": "Conversation already closed; no further sends on this thread."}
+    return respond(state, memory, request.message)
 
 
 @app.post("/v1/teardown")
 def teardown() -> dict[str, Any]:
     store.clear()
+    conversations.clear()
     return {"status": "ok"}
