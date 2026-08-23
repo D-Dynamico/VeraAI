@@ -282,7 +282,57 @@ Deliberately **not** used: no database, no vector store, no LangChain or agent f
 
 ---
 
-## 13. Commands
+## 13. Git workflow and session log
+
+**Commit after every substep. Push after every phase, and ask before pushing.**
+
+### Commit message style
+
+A title line, then at most one paragraph of 4-5 lines. No bullet lists, no multi-section bodies.
+
+```
+Add versioned context store
+
+Keeps the previous version of every context alongside the current one so
+the composer can name what changed when the judge pushes an update. Chose
+in-memory dicts over SQLite because the test window is a single process
+and the brief permits it.
+```
+
+The title says what changed. The paragraph says **why**, and names any decision a reader would otherwise question.
+
+### Rhythm
+
+| When | Do |
+|---|---|
+| Substep finished | Write the `session.md` entry, then commit both the code and the entry together |
+| Phase finished | Ask the user, then push |
+| Never | Push without asking; commit a `.env` or an API key |
+
+### `session.md`
+
+A running log of the build, one entry per substep, written **at the same time as the commit** — same content discipline, more room for reasoning. Each entry records what was done, why that approach, what was rejected and why, and anything surprising found along the way. It is the reasoning trail the commit messages are too short to hold.
+
+Entry format:
+
+```markdown
+## Phase N, substep M — <what it was>
+*Committed: <short sha>*
+
+**Done.** What now exists and works.
+
+**Why this way.** The decision and its reasoning.
+
+**Rejected.** The alternative and why it lost.
+
+**Surprises.** Anything the briefs, the dataset, or the simulator revealed that changed the plan. Omit if none.
+```
+
+The file starts empty. The first entry is written when Phase 1 substep 1 is done.
+
+---
+
+## 14. Commands
 
 ```bash
 # Expand seeds -> 50 merchants / 200 customers / 100 triggers / test_pairs.json
@@ -299,7 +349,7 @@ Environment: Windows 11, Python 3.12.10, `fastapi` and `uvicorn` already install
 
 ---
 
-## 14. Working agreements
+## 15. Working agreements
 
 - Do not commit or deploy without being asked.
 - No real merchant outreach; all data here is synthetic. Do not scrape magicpin or Google.
