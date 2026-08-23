@@ -20,6 +20,9 @@ SHOP_WORD = {
     "pharmacies": "chemists",
 }
 
+# WhatsApp has no paragraph tag; a blank line is the only layout tool.
+BLOCK_SEPARATOR = "\n\n"
+
 # Kinds where a Hindi lead-in is natural for a customer who mixes languages.
 HINDI_CLAUSE = {
     "booking": "Aapke liye slot rakh dein?",
@@ -48,7 +51,7 @@ class Draft:
     hindi_mood: str | None = None
 
 
-def _salutation(pack: FactPack) -> str:
+def salutation(pack: FactPack) -> str:
     if pack.is_customer_facing:
         return f"Hi {pack.customer_name}"
     title = "Dr. " if pack.category_slug == "dentists" else ""
@@ -509,8 +512,8 @@ BUILDERS: dict[str, Callable[[FactPack, Fact | None], Draft]] = {
 }
 
 
-def compose_from_template(pack: FactPack, cohort: Cohort | None = None) -> ComposedMessage | None:
-    """Assemble the message. Returns None when consent blocks the send."""
+def plan_message(pack: FactPack, cohort: Cohort | None = None) -> tuple[Draft, Fact | None] | None:
+    """Decide what this message says. Returns None when consent blocks the send."""
     if pack.blocked_reason:
         return None
 
@@ -519,8 +522,11 @@ def compose_from_template(pack: FactPack, cohort: Cohort | None = None) -> Compo
         pack.license(proof)
 
     builder = BUILDERS.get(pack.trigger_kind, _generic)
-    draft = builder(pack, proof)
+    return builder(pack, proof), proof
 
+
+def assemble(pack: FactPack, draft: Draft, proof: Fact | None) -> ComposedMessage:
+    """Turn the decided parts into the message. Shared by the template and LLM paths."""
     anchor, demoted = draft.anchor, ""
     if not opens_on_an_anchor(f"x, {anchor}"):
         # A soft opener wastes the only line WhatsApp shows in the notification,
@@ -529,7 +535,7 @@ def compose_from_template(pack: FactPack, cohort: Cohort | None = None) -> Compo
         if replacement:
             anchor, demoted = replacement.text, draft.anchor
 
-    opening = f"{_salutation(pack)}, {_lower_first(anchor)}"
+    opening = f"{salutation(pack)}, {_lower_first(anchor)}"
     blocks = [_sentence(opening)]
     if demoted:
         blocks.append(_upper_first(_sentence(demoted)))
@@ -544,9 +550,17 @@ def compose_from_template(pack: FactPack, cohort: Cohort | None = None) -> Compo
     blocks.append(_sentence(draft.ask))
 
     return ComposedMessage(
-        body="\n\n".join(blocks),
+        body=BLOCK_SEPARATOR.join(blocks),
         cta=draft.cta,
         send_as="merchant_on_behalf" if pack.is_customer_facing else "vera",
         suppression_key=pack.suppression_key,
         rationale=draft.rationale,
     )
+
+
+def compose_from_template(pack: FactPack, cohort: Cohort | None = None) -> ComposedMessage | None:
+    plan = plan_message(pack, cohort)
+    if plan is None:
+        return None
+    draft, proof = plan
+    return assemble(pack, draft, proof)
