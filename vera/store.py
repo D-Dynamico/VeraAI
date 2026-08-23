@@ -47,6 +47,14 @@ class ContextStore:
     def get_stored(self, scope: str, context_id: str) -> StoredContext | None:
         return self._contexts.get((scope, context_id))
 
+    def all_of(self, scope: str) -> list[dict[str, Any]]:
+        """Every payload in one scope. Cohort facts are computed across this."""
+        return [stored.payload for (kind, _), stored in self._contexts.items() if kind == scope]
+
+    def version_of(self, scope: str, context_id: str) -> int:
+        stored = self._contexts.get((scope, context_id))
+        return stored.version if stored else 0
+
     def counts_by_scope(self) -> dict[str, int]:
         counts = {scope: 0 for scope in VALID_SCOPES}
         for scope, _ in self._contexts:

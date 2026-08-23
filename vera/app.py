@@ -1,29 +1,49 @@
 """The five endpoints the judge harness drives, plus teardown."""
 
 import time
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from vera.cohort import build_cohort
+from vera.compose import ComposeJob, Composer
 from vera.conversation import ConversationStore, respond
+from vera.factpack import build_fact_pack
+from vera.policy import SendLedger, select
 from vera.store import VALID_SCOPES, ContextStore
+from vera.templates import BLOCK_SEPARATOR
 
 app = FastAPI()
 store = ContextStore()
 conversations = ConversationStore()
+composer = Composer()
+ledger = SendLedger()
 started_at = time.time()
 
 METADATA = {
     "team_name": "D-Dynamico",
     "team_members": ["D-Dynamico"],
-    "model": "gemini-2.0-flash",
+    "model": "gemini-3.1-flash-lite",
     "approach": "Deterministic fact extraction with an LLM wordsmithing layer and a template fallback",
     "contact_email": "contact@example.com",
     "version": "0.1.0",
     "submitted_at": "2026-08-23T00:00:00Z",
 }
+
+
+def _parse_now(value: str) -> datetime:
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return datetime.now(timezone.utc)
+
+
+def _template_params(body: str) -> list[str]:
+    """First outbound must ride a template; the blocks are its parameters."""
+    return [block.strip() for block in body.split(BLOCK_SEPARATOR) if block.strip()]
 
 
 class ContextPush(BaseModel):
@@ -88,8 +108,56 @@ def push_context(request: ContextPush) -> JSONResponse:
 
 
 @app.post("/v1/tick")
-def tick(request: TickRequest) -> dict[str, Any]:
-    return {"actions": []}
+async def tick(request: TickRequest) -> dict[str, Any]:
+    now = _parse_now(request.now)
+    candidates = select(store, request.available_triggers, now, ledger)
+    if not candidates:
+        return {"actions": []}
+
+    jobs = []
+    for candidate in candidates:
+        pack = build_fact_pack(
+            candidate.category,
+            candidate.merchant,
+            candidate.trigger,
+            candidate.customer,
+            previous_merchant=candidate.previous_merchant,
+            today=now.date(),
+        )
+        jobs.append(
+            ComposeJob(
+                pack=pack,
+                category=candidate.category,
+                cohort=build_cohort(candidate.merchant, store.all_of("merchant")),
+                cache_key=f"{candidate.trigger['id']}:{store.version_of('merchant', pack.merchant_id)}",
+            )
+        )
+
+    messages = await composer.compose_many(jobs)
+
+    actions = []
+    for candidate, message in zip(candidates, messages):
+        if message is None:
+            continue
+        merchant_id = candidate.merchant["merchant_id"]
+        kind = candidate.trigger.get("kind", "")
+        ledger.record(merchant_id, kind, candidate.trigger.get("suppression_key", ""), now)
+        actions.append(
+            {
+                "conversation_id": f"conv_{merchant_id}_{kind}_{now:%Y%m%d}",
+                "merchant_id": merchant_id,
+                "customer_id": candidate.trigger.get("customer_id"),
+                "send_as": message.send_as,
+                "trigger_id": candidate.trigger["id"],
+                "template_name": f"vera_{kind}_v1",
+                "template_params": _template_params(message.body),
+                "body": message.body,
+                "cta": message.cta,
+                "suppression_key": message.suppression_key,
+                "rationale": message.rationale,
+            }
+        )
+    return {"actions": actions}
 
 
 @app.post("/v1/reply")
@@ -105,4 +173,6 @@ def reply(request: ReplyRequest) -> dict[str, Any]:
 def teardown() -> dict[str, Any]:
     store.clear()
     conversations.clear()
+    composer.clear()
+    ledger.clear()
     return {"status": "ok"}

@@ -5,6 +5,7 @@ own: an anchor fact in the opening sentence, one line of consequence, and a
 single low-friction ask at the end. No jargon, no percentages-off, no URLs.
 """
 
+import re
 from dataclasses import dataclass
 from typing import Any, Callable
 
@@ -82,6 +83,25 @@ def _upper_first(text: str) -> str:
 
 def _payload(pack: FactPack, key: str, default: Any = None) -> Any:
     return pack.trigger_payload.get(key, default)
+
+
+# Metric names arrive as field names. A shop owner reads plain words.
+METRIC_WORDS = {
+    "review_count": "reviews",
+    "reviews": "reviews",
+    "calls": "calls",
+    "views": "people finding you on Google",
+    "directions": "people asking for directions",
+    "leads": "enquiries",
+    "footfall": "walk-ins",
+    "orders": "orders",
+    "members": "members",
+}
+
+
+def _metric_label(raw: Any, default: str) -> str:
+    key = str(raw or default).strip().lower()
+    return METRIC_WORDS.get(key, key.replace("_", " "))
 
 
 # --- merchant-facing builders -------------------------------------------------
@@ -163,8 +183,8 @@ def _competitor_opened(pack: FactPack, proof: Fact | None) -> Draft:
 
 def _curious_ask_due(pack: FactPack, proof: Fact | None) -> Draft:
     return Draft(
-        anchor="quick question, and it helps me help you better",
-        context=proof.text if proof else "",
+        anchor=proof.text if proof else f"you have been running {pack.business_name} a while now",
+        context="",
         ask=f"What are people asking you for most this week at {pack.business_name}?",
         cta="open_ended",
         rationale="Scheduled curious ask; the merchant answers about their own shop, which is the cheapest reply to give.",
@@ -228,7 +248,7 @@ def _ipl_match_today(pack: FactPack, proof: Fact | None) -> Draft:
 
 
 def _milestone_reached(pack: FactPack, proof: Fact | None) -> Draft:
-    metric = str(_payload(pack, "metric", "")).replace("_", " ")
+    metric = _metric_label(_payload(pack, "metric"), "reviews")
     value = _payload(pack, "value_now") or _payload(pack, "milestone_value")
     pack.license_numbers(value)
     headline = f"you have crossed {value} {metric}".strip() if value else "you have hit a good mark this month"
@@ -242,7 +262,7 @@ def _milestone_reached(pack: FactPack, proof: Fact | None) -> Draft:
 
 
 def _perf_dip(pack: FactPack, proof: Fact | None) -> Draft:
-    metric = str(_payload(pack, "metric", "calls")).replace("_", " ")
+    metric = _metric_label(_payload(pack, "metric"), "calls")
     delta = _payload(pack, "delta_pct")
     baseline = _payload(pack, "vs_baseline")
     pack.license_numbers(baseline)
@@ -262,7 +282,7 @@ def _perf_dip(pack: FactPack, proof: Fact | None) -> Draft:
 
 
 def _perf_spike(pack: FactPack, proof: Fact | None) -> Draft:
-    metric = str(_payload(pack, "metric", "views")).replace("_", " ")
+    metric = _metric_label(_payload(pack, "metric"), "views")
     delta = _payload(pack, "delta_pct")
     driver = _payload(pack, "likely_driver", "")
     if delta:
@@ -313,7 +333,7 @@ def _review_theme_emerged(pack: FactPack, proof: Fact | None) -> Draft:
 def _seasonal_perf_dip(pack: FactPack, proof: Fact | None) -> Draft:
     note = _payload(pack, "season_note", "")
     delta = _payload(pack, "delta_pct")
-    metric = str(_payload(pack, "metric", "footfall")).replace("_", " ")
+    metric = _metric_label(_payload(pack, "metric"), "footfall")
     if delta:
         drop = round(abs(float(delta)) * 100)
         pack.license_numbers(drop)
@@ -535,16 +555,27 @@ def assemble(pack: FactPack, draft: Draft, proof: Fact | None) -> ComposedMessag
         if replacement:
             anchor, demoted = replacement.text, draft.anchor
 
-    opening = f"{salutation(pack)}, {_lower_first(anchor)}"
-    blocks = [_sentence(opening)]
-    if demoted:
-        blocks.append(_upper_first(_sentence(demoted)))
+    blocks: list[str] = []
+    seen: set[str] = set()
 
-    if pack.changed_metrics and pack.changed_metrics[0].text != anchor:
+    def add(text: str) -> None:
+        """Promoting a fact to the opener can leave the same line in the middle."""
+        cleaned = _upper_first(_sentence(text))
+        fingerprint = re.sub(r"[^a-z0-9]", "", cleaned.lower())
+        if fingerprint and fingerprint not in seen:
+            seen.add(fingerprint)
+            blocks.append(cleaned)
+
+    blocks.append(_sentence(f"{salutation(pack)}, {_lower_first(anchor)}"))
+    seen.add(re.sub(r"[^a-z0-9]", "", _sentence(anchor).lower()))
+
+    if demoted:
+        add(demoted)
+    if pack.changed_metrics:
         # Naming what moved since the last push is what the adaptation score rewards.
-        blocks.append(_upper_first(_sentence(pack.changed_metrics[0].text)))
+        add(pack.changed_metrics[0].text)
     if draft.context.strip():
-        blocks.append(_upper_first(_sentence(draft.context)))
+        add(draft.context)
     if draft.hindi_mood and _speaks_hindi(pack):
         blocks.append(HINDI_CLAUSE[draft.hindi_mood])
     blocks.append(_sentence(draft.ask))
