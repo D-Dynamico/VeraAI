@@ -1,0 +1,17 @@
+# Secrets
+.env
+*.key
+
+# Generated dataset (reproduce with: python dataset/generate_dataset.py --seed-dir dataset --out expanded)
+expanded/
+
+# Judge and tooling output
+results/
+review.html
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
