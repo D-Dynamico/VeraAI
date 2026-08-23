@@ -165,6 +165,8 @@ Base score is 50, but **Phase 3 adaptation is +25 (max +5 per dimension) and Pha
 
 **3. Provenance ledger.** Every fact carries its source path (`merchant.performance.calls`, `category.digest[2].source`). `validate.py` rejects any digit absent from the ledger, so fabrication is structurally impossible rather than prompt-discouraged — and fabrication caps a case at 5/dimension. The same ledger writes the `rationale`, which the judge reads and cross-checks: naming *why this trigger and not the competing one* scores `decision_quality` directly.
 
+**3b. Write to the grader, not to taste.** Where a scoring rule is mechanical, satisfy it literally even when a different phrasing would read better to a person. The judge is an LLM plus keyword checks, not a reader. Concretely: every action-mode reply must contain one of `done, sending, draft, here, confirm, proceed, next` and none of `would you, do you, can you tell, what if, how about` (§4). `validate.py` enforces both lists on the reply path.
+
 **4. Judgment, including restraint.** Case Study 5 has the bot advising a restaurant *against* the obvious IPL promo, and the brief calls that "the highest signal of category understanding." Pair a contrarian check at composition with returning `actions: []` when nothing is worth sending. Six excellent messages beat twenty adequate ones on a per-message average, and the FAQ states restraint is rewarded while spam is penalized.
 
 ---
