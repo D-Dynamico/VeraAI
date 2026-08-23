@@ -305,11 +305,13 @@ The title says what changed. The paragraph says **why**, and names any decision 
 
 | When | Do |
 |---|---|
-| Substep finished | Write the `session.md` entry, then commit both the code and the entry together |
+| Substep finished | Write the `session.md` entry, then commit the code |
 | Phase finished | Ask the user, then push |
 | Never | Push without asking; commit a `.env` or an API key |
 
 ### `session.md`
+
+**Local only — `session.md` is gitignored and never committed.** It is a working notebook for whoever is at the keyboard, not a repo artifact.
 
 A running log of the build, one entry per substep, written **at the same time as the commit** — same content discipline, more room for reasoning. Each entry records what was done, why that approach, what was rejected and why, and anything surprising found along the way. It is the reasoning trail the commit messages are too short to hold.
 
