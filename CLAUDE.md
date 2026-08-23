@@ -118,7 +118,7 @@ customer: customer_id, merchant_id, identity{name, phone_redacted, language_pref
 
 ## 7. Planned architecture
 
-Full plan: `C:\Users\dayuk\.claude\plans\how-to-take-on-witty-rabbit.md`
+Full plan: `~/.claude/plans/how-to-take-on-witty-rabbit.md` (local, not in this repo)
 
 **Deterministic core, LLM as a wordsmithing layer** (deliberately the inverse of the obvious approach). Python selects the trigger, extracts the facts, picks the CTA, and validates the output. Gemini only turns an approved fact pack into a sentence. If it is slow, rate-limited, or emits an unverifiable number, a deterministic template answers instead — so the bot never times out and never fabricates.
 
