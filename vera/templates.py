@@ -63,6 +63,10 @@ class Draft:
     cta: str
     rationale: str
     hindi_mood: str | None = None
+    # The anchor opens on a name — a festival, a competitor. It follows the
+    # salutation and a comma, but a proper noun keeps its capital: "Dr. Meera,
+    # smile Studio has opened" is the kind of slip that reads as a machine.
+    anchor_opens_on_a_name: bool = False
 
 
 def salutation(pack: FactPack) -> str:
@@ -81,9 +85,12 @@ def _sentence(text: str) -> str:
     return text if text.endswith(("?", "!", ".")) else text + "."
 
 
-def _lower_first(text: str) -> str:
-    """The anchor follows a name and a comma, so it must not start with a capital."""
-    return text[:1].lower() + text[1:] if text and not text[:2].isupper() else text
+def _lower_first(text: str, keep_capital: bool = False) -> str:
+    """The anchor follows a name and a comma, so it must not start with a capital —
+    unless it opens on a proper noun, which keeps its own."""
+    if keep_capital or not text or text[:2].isupper():
+        return text
+    return text[:1].lower() + text[1:]
 
 
 def _upper_first(text: str) -> str:
@@ -209,6 +216,7 @@ def _competitor_opened(pack: FactPack, proof: Fact | None) -> Draft:
     where = f"{distance} km away" if distance else "nearby"
     return Draft(
         anchor=f"{name} has opened {where}",
+        anchor_opens_on_a_name=True,
         context=proof.text if proof else "New places usually take a few of your searches in the first month.",
         ask="Want me to check what your listing shows next to theirs?",
         cta="binary",
@@ -246,6 +254,7 @@ def _festival_upcoming(pack: FactPack, proof: Fact | None) -> Draft:
     when = f"{festival} is {days} days away" if days else f"{festival} is coming"
     return Draft(
         anchor=when,
+        anchor_opens_on_a_name=True,
         context=f"Your {pack.offer_title} is the one to put in front of people first." if pack.offer_title else "",
         ask="Want me to write the festival post for your listing?",
         cta="binary",
@@ -279,7 +288,7 @@ def _ipl_match_today(pack: FactPack, proof: Fact | None) -> Draft:
         context = "On a weekend more people watch at home, so a dine-in push usually falls flat."
         ask = "Want me to set up a delivery-only special instead?"
         rationale = "Weekend match, so advised against the dine-in push and offered the delivery angle instead."
-    return Draft(anchor=f"{match} is on today{f' at {venue}' if venue else ''}", context=context, ask=ask, cta="binary", rationale=rationale)
+    return Draft(anchor=f"{match} is on today{f' at {venue}' if venue else ''}", anchor_opens_on_a_name=True, context=context, ask=ask, cta="binary", rationale=rationale)
 
 
 def _milestone_reached(pack: FactPack, proof: Fact | None) -> Draft:
@@ -631,7 +640,9 @@ def assemble(pack: FactPack, draft: Draft, proof: Fact | None) -> ComposedMessag
             seen.add(fingerprint)
             blocks.append(cleaned)
 
-    blocks.append(_sentence(f"{salutation(pack)}, {_lower_first(anchor)}"))
+    # Only the builder's own anchor carries the flag; a promoted fact never opens on a name.
+    opens_on_a_name = draft.anchor_opens_on_a_name and not demoted
+    blocks.append(_sentence(f"{salutation(pack)}, {_lower_first(anchor, opens_on_a_name)}"))
     seen.add(re.sub(r"[^a-z0-9]", "", _sentence(anchor).lower()))
 
     if demoted:
