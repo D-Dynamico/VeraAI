@@ -32,7 +32,7 @@ MARKDOWN_PATTERN = re.compile(r"\*\*|^#{1,6}\s|\[.+\]\(.+\)", re.MULTILINE)
 # Payload values are enum codes ("postcard_or_phone_call", "kids_yoga_post").
 # One reaching a body has leaked a field name at the merchant; it has happened
 # twice, so it is a rule rather than a habit.
-RAW_CODE_PATTERN = re.compile(r"\b[a-z]+(?:_[a-z]+)+\b")
+RAW_CODE_PATTERN = re.compile(r"\b[a-z]+(?:_[a-z]+)+\b", re.IGNORECASE)
 DEVANAGARI_PATTERN = re.compile(r"[ऀ-ॿ]")
 PROPER_NOUN_PATTERN = re.compile(r"\b[A-Z][a-zA-Z]{2,}")
 CTA_PATTERN = re.compile(r"\breply\b|\bwant me to\b|\bshall i\b|\bwould you like\b", re.IGNORECASE)

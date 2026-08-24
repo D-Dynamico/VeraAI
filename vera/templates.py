@@ -398,7 +398,6 @@ def _review_theme_emerged(pack: FactPack, proof: Fact | None) -> Draft:
 
 
 def _seasonal_perf_dip(pack: FactPack, proof: Fact | None) -> Draft:
-    note = _payload(pack, "season_note", "")
     delta = _payload(pack, "delta_pct")
     metric = _metric_label(_payload(pack, "metric"), "footfall")
     if delta:
@@ -409,7 +408,8 @@ def _seasonal_perf_dip(pack: FactPack, proof: Fact | None) -> Draft:
         anchor = f"your {metric} are down, and this is the normal dip for this time of year"
     return Draft(
         anchor=anchor,
-        context=note or "Nothing is broken on your listing. It picks up again after the season turns.",
+        # `season_note` is a code, not a sentence ("post_resolution_window_apr_jun").
+        context="Nothing is broken on your listing. It picks up again after the season turns.",
         ask="Want me to set up something small to hold you over till then?",
         cta="binary",
         rationale="Expected seasonal dip; told the merchant not to worry rather than selling into the fear.",
