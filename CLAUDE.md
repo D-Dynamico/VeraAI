@@ -111,7 +111,15 @@ customer: customer_id, merchant_id, identity{name, phone_redacted, language_pref
 ## 6. Decisions already made (do not re-litigate without the user)
 
 - **LLM for composition: Gemini free tier** (Google AI Studio key, `GEMINI_API_KEY`).
-- **Deployment: cloud** (Render/Fly/Railway class) — must be **single instance, no autoscaling, no scale-to-zero**, because context state is in-memory and a restart mid-test fails warmup (3 consecutive healthz failures = disqualification for that slot).
+- **Deployment: ngrok tunnel to a local container.** `challenge-testing-brief.md` §6 lists a tunnel alongside the clouds as an accepted deployment, so this is within the rules, not a workaround. Whatever serves the bot must be **single instance, no autoscaling, no scale-to-zero**, because context state is in-memory and a restart mid-test fails warmup (3 consecutive healthz failures = disqualification for that slot).
+
+  **Why not a cloud.** Fly, Render paid, Railway and Cloud Run all gate *app creation* on a credit card, which is not available here; Render's free tier is separately disqualifying because it scales to zero. ngrok's free plan needs no card for HTTP/S endpoints and includes one static domain that survives tunnel restarts. Hugging Face Spaces was rejected on reports that its Docker SDK is now paid, and Cloudflare quick tunnels on their changing URL.
+
+  **What this costs.** The machine running the container *is* the server. §4 of the testing brief puts warmup at T-15 and the report at T0+90, so it must stay awake and online for **~105 minutes**, not 60 — no sleep, no update reboot, no Wi-Fi drop, from URL submission to the end of judging.
+
+  **Untested risk.** ngrok free shows a browser interstitial on HTTP/S endpoints. It is User-Agent driven and a Python client should pass through, but this must be proven by running `tools/rehearsal.py` or `judge_simulator.py` through the tunnel before submitting. Fallback is `cloudflared`.
+
+  `Dockerfile` and `fly.toml` stay in the repo: the container is the runtime either way, and Fly becomes available the moment a card does.
 - **Scope: full** — HTTP server *and* the §7 offline artifacts, sharing one composer core.
 
 ---
@@ -137,6 +145,8 @@ make_submission.py 30-line submission.jsonl from expanded/test_pairs.json
 tools/local_harness.py  offline no-LLM run over all triggers; asserts validators
 tools/review_page.py    emits a self-contained review.html: every composition as a WhatsApp
                         bubble, beside its trigger, validator status, and rationale
+tools/rehearsal.py      drives a running bot through the judge's real Phase 1-3 lifecycle,
+                        no LLM: 255 contexts, twelve ticks, the three Phase 3 injections
 ```
 
 `review.html` is a **development tool only** — never served by the bot, no runtime cost during the judged window. It exists because tuning composition by reading JSON in a terminal hides the things that matter: how the message reads in a bubble, where line breaks fall, and whether the anchor fact survives WhatsApp's ~2-line notification preview.
@@ -243,9 +253,12 @@ Seven phases. Each ends in something runnable — no phase leaves the repo in a 
 4. Target: average 40/50 or better
 
 **Phase 6 — Deploy.** ~1 hour
-1. `requirements.txt`, `Dockerfile`, `render.yaml` — single instance, no autoscaling, no scale-to-zero
-2. `GEMINI_API_KEY` as a secret; health check on `/v1/healthz`
-3. Re-run the simulator against the public URL
+1. `requirements.txt`, `Dockerfile`, `.dockerignore`, `fly.toml` — single instance, single uvicorn worker, no autoscaling, no scale-to-zero *(done)*
+2. Real contact details in `/v1/metadata` *(done)*
+3. `tools/rehearsal.py` — the judge's real Phase 1-3 lifecycle offline: 255 contexts, twelve ticks, the three injections *(done)*
+4. ngrok static domain over the local container; `GEMINI_API_KEY` from `.env` in the container environment
+5. Re-run `tools/rehearsal.py` **through the tunnel** — this is what settles the interstitial question — then `judge_simulator.py`
+6. Idle check: leave it untouched ~20 minutes and confirm `uptime_seconds` kept climbing rather than reset
 
 **Phase 7 — Submission artifacts.** ~1 hour
 1. `bot.py` — the offline `compose()` over the same core
@@ -265,9 +278,9 @@ Seven phases. Each ends in something runnable — no phase leaves the repo in a 
 | HTTP client | httpx | 0.27.0 | Async Gemini calls inside the tick deadline, and `ASGITransport` for endpoint tests without a live server |
 | LLM | Gemini free tier, called over its REST API with httpx | — | No SDK dependency; `temperature: 0` plus a JSON response schema |
 | Tests | pytest | 8.2.0 | Validator, fact-pack, and reply-path assertions |
-| Config | environment variables (`GEMINI_API_KEY`), python-dotenv for local runs | 1.0.1 | Key never lands in the repo |
+| Config | environment variables (`GEMINI_API_KEY`), with `.env` read directly for local runs | — | Key never lands in the repo. `compose.api_key()` parses `.env` itself, so python-dotenv is **not** a dependency |
 | Persistence | none — in-memory dicts | — | The brief permits it; it forces the single-instance deploy constraint in §6 |
-| Deploy | Docker on Render (or Fly/Railway) | — | Single instance, no autoscaling, no scale-to-zero |
+| Deploy | Docker container behind an ngrok static domain | — | Single instance, single worker, no autoscaling, no scale-to-zero. `fly.toml` is kept for the cloud path (§6) |
 
 Deliberately **not** used: no database, no vector store, no LangChain or agent framework, no Gemini SDK. Every one of those would add a dependency, a failure mode, and cold-start latency without earning a point on the rubric.
 
@@ -338,18 +351,35 @@ The file starts empty. The first entry is written when Phase 1 substep 1 is done
 
 ## 14. Commands
 
+Prefix anything that prints a body with `PYTHONIOENCODING=utf-8` — the rupee sign crashes the default Windows console codec.
+
 ```bash
 # Expand seeds -> 50 merchants / 200 customers / 100 triggers / test_pairs.json
 python dataset/generate_dataset.py --seed-dir dataset --out expanded
 
-# Run the bot locally
-uvicorn vera.app:app --host 0.0.0.0 --port 8080
+# Run the bot locally. NOT 8080 — an EnterpriseDB Apache service owns that port.
+python -m uvicorn vera.app:app --host 127.0.0.1 --port 8123 --workers 1
 
-# Rehearse the judge (edit BOT_URL / LLM_PROVIDER / LLM_API_KEY / TEST_SCENARIO in the file first)
+# Or in the container, exactly as deployed
+docker build -t vera:test . && docker run -d --name vera-test -p 8125:8080 vera:test
+
+# Compose for all 100 triggers offline; asserts the validators. No server, no LLM.
+python tools/local_harness.py            # add --llm N to compare N against Gemini
+
+# Every composition as a WhatsApp bubble -> review.html. No network.
+python tools/review_page.py
+
+# The judge's real Phase 1-3 lifecycle against a running bot. No LLM.
+python tools/rehearsal.py --url http://127.0.0.1:8123
+
+# Rehearse the judge's scoring (reads BOT_URL / LLM_API_KEY / TEST_SCENARIO from the
+# environment — the file was patched so no key is ever pasted into a tracked file)
 python judge_simulator.py
 ```
 
-Environment: Windows 11, Python 3.12.10, `fastapi` and `uvicorn` already installed. No LLM API keys are currently set in the environment.
+Killing a server: `pkill` does not reach uvicorn on Windows. Kill by port owner in PowerShell, and check `uptime_seconds` on healthz to confirm you are talking to a fresh process. Call `POST /v1/teardown` between runs or stale contexts 409 and the send ledger mutes everything.
+
+Environment: Windows 11, Python 3.12.10, Docker Desktop (needs starting; it does not persist between sessions). `GEMINI_API_KEY` is in `.env`, gitignored.
 
 ---
 
