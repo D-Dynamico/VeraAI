@@ -28,9 +28,9 @@ METADATA = {
     "team_members": ["D-Dynamico"],
     "model": "gemini-3.1-flash-lite",
     "approach": "Deterministic fact extraction with an LLM wordsmithing layer and a template fallback",
-    "contact_email": "contact@example.com",
-    "version": "0.1.0",
-    "submitted_at": "2026-08-23T00:00:00Z",
+    "contact_email": "dayukori@gmail.com",
+    "version": "1.0.0",
+    "submitted_at": "2026-08-24T00:00:00Z",
 }
 
 

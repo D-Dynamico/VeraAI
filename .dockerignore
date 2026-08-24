@@ -1,0 +1,6 @@
+# The image needs vera/ and requirements.txt. Nothing else is on a runtime path —
+# contexts arrive by push, so the dataset is build-time only.
+*
+!requirements.txt
+!vera/
+vera/__pycache__/
