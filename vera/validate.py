@@ -51,7 +51,13 @@ def _sentences(body: str) -> list[str]:
     return [part.replace(_ABBREVIATION_MARK, ".").strip() for part in parts if part.strip()]
 
 
-def _speaks_hindi(pack: FactPack) -> bool:
+def speaks_hindi(pack: FactPack) -> bool:
+    """Whether this customer's stated preference asks for a Hindi clause.
+
+    Public and single: `templates` decides whether to add the clause and this
+    module decides whether its absence is a failure. Two copies of the rule can
+    drift into rejecting exactly what the composer just produced.
+    """
     language = pack.customer_language.lower()
     return language.startswith("hi") or "hi-en" in language
 
@@ -121,7 +127,7 @@ def check(
             failures.append(f"stiff phrasing {word!r}")
 
     if pack and pack.is_customer_facing:
-        if _speaks_hindi(pack) and not _has_hindi(body):
+        if speaks_hindi(pack) and not _has_hindi(body):
             failures.append("customer prefers a Hindi mix but the body is pure English")
     elif pack and _has_hindi(body):
         failures.append("merchant messages are English only")

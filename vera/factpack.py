@@ -271,10 +271,5 @@ def calls_per_hundred(pack: FactPack) -> str:
     return _people_who_call(pack.performance.get("views", 0), pack.performance.get("calls", 0))
 
 
-def peer_calls_per_hundred(pack: FactPack) -> str:
-    average_ctr = pack.peer_stats.get("avg_ctr")
-    return f"{round(average_ctr * 100)}" if average_ctr else ""
-
-
 def percent(value: float) -> str:
     return _percent(value)

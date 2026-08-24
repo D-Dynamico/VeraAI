@@ -125,10 +125,6 @@ class ConversationStore:
             self._partners[key] = PartnerMemory()
         return self._partners[key]
 
-    def is_open(self, conversation_id: str) -> bool:
-        state = self._conversations.get(conversation_id)
-        return not (state and state.ended)
-
     def clear(self) -> None:
         self._conversations.clear()
         self._partners.clear()

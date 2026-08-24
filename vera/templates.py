@@ -11,7 +11,7 @@ from typing import Any, Callable
 
 from vera.cohort import Cohort, social_proof_fact
 from vera.factpack import Fact, FactPack
-from vera.validate import opens_on_an_anchor
+from vera.validate import opens_on_an_anchor, speaks_hindi
 
 SHOP_WORD = {
     "dentists": "clinics",
@@ -74,10 +74,6 @@ def salutation(pack: FactPack) -> str:
 
 def _shop_word(pack: FactPack) -> str:
     return SHOP_WORD.get(pack.category_slug, "shops")
-
-
-def _speaks_hindi(pack: FactPack) -> bool:
-    return "hi" in pack.customer_language.lower().split("-")[0] or "hi-en" in pack.customer_language
 
 
 def _sentence(text: str) -> str:
@@ -645,7 +641,7 @@ def assemble(pack: FactPack, draft: Draft, proof: Fact | None) -> ComposedMessag
         add(pack.changed_metrics[0].text)
     if draft.context.strip():
         add(draft.context)
-    if draft.hindi_mood and _speaks_hindi(pack):
+    if draft.hindi_mood and speaks_hindi(pack):
         blocks.append(HINDI_CLAUSE[draft.hindi_mood])
     blocks.append(_sentence(draft.ask))
 

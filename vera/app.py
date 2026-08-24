@@ -174,7 +174,14 @@ def reply(request: ReplyRequest) -> dict[str, Any]:
     memory = conversations.partner(request.merchant_id, request.customer_id)
     if state.ended or memory.opted_out:
         return {"action": "end", "rationale": "Conversation already closed; no further sends on this thread."}
-    return respond(state, memory, request.message)
+
+    answer = respond(state, memory, request.message)
+    # The opt-out rationale promises to suppress future sends, and the judge reads
+    # rationales. Without this the promise is empty: /v1/reply stops answering but
+    # /v1/tick keeps composing new ones, because only the ledger gates a proactive send.
+    if memory.opted_out and request.merchant_id:
+        ledger.suppress_merchant(request.merchant_id)
+    return answer
 
 
 @app.post("/v1/teardown")
