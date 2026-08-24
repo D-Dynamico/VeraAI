@@ -137,13 +137,31 @@ def phase_two(bot: Bot, triggers: dict, t0: datetime) -> list[dict]:
     return sent
 
 
-def phase_three(bot: Bot, categories: dict, merchants: dict, customers: dict, triggers: dict, t0: datetime) -> None:
+def phase_three(
+    bot: Bot, categories: dict, merchants: dict, customers: dict, triggers: dict, t0: datetime, sent: list[dict]
+) -> None:
     """The three injections the judge interleaves, each checked on its own terms."""
     print("\n--- phase 3: context injection ---")
     now = t0 + timedelta(minutes=62)
 
-    # 1. A performance snapshot lands as version 2. The next message should name the change.
-    merchant_id, merchant = next(iter(sorted(merchants.items())))
+    # 1. A performance snapshot lands as version 2. The next message should name
+    # the change. The merchant must be one already messaged in phase 2, or the
+    # quiet rules this is meant to override would never have engaged.
+    # Isolate the waiver: the pair must be blocked *only* by the per-kind rule and
+    # cooldown. Urgency above 1 keeps the separate "do not interrupt an engaged
+    # merchant" rule out of the result, which is restraint we want to keep.
+    spent = {action["trigger_id"] for action in sent}
+    messaged = {action["merchant_id"] for action in sent}
+    merchant_id, fresh = next(
+        (candidate, trigger)
+        for candidate in sorted(messaged)
+        for trigger in sorted(triggers.values(), key=lambda item: item["id"])
+        if trigger.get("merchant_id") == candidate
+        and trigger.get("scope") != "customer"
+        and trigger["id"] not in spent
+        and trigger.get("urgency", 1) > 1
+    )
+    merchant = merchants[merchant_id]
     updated = json.loads(json.dumps(merchant))
     old_calls = updated["performance"]["calls"]
     new_calls = old_calls + 19
@@ -158,12 +176,9 @@ def phase_three(bot: Bot, categories: dict, merchants: dict, customers: dict, tr
         f"status {stale_status} {stale_body}",
     )
 
-    fresh = next(
-        t
-        for t in sorted(triggers.values(), key=lambda item: item["id"])
-        if t.get("merchant_id") == merchant_id and t.get("scope") != "customer"
-    )
-    bot.push("trigger", fresh["id"], 2, fresh, now)
+    # The judge injects *new* triggers in phase 3, so this is an unspent one —
+    # the version waiver never waives the suppression key.
+    bot.push("trigger", fresh["id"], 1, fresh, now)
     actions = bot.tick(now, [fresh["id"]])["actions"]
     body = actions[0]["body"] if actions else ""
     check(
@@ -174,7 +189,13 @@ def phase_three(bot: Bot, categories: dict, merchants: dict, customers: dict, tr
 
     # 2. A customer arrives, then its recall_due trigger two minutes later.
     later = now + timedelta(minutes=2)
-    recall = next(t for t in sorted(triggers.values(), key=lambda i: i["id"]) if t.get("kind") == "recall_due")
+    # A different merchant from the one above: the judge uses five separate
+    # merchants here, and reusing that one would just re-test the cooldown.
+    recall = next(
+        t
+        for t in sorted(triggers.values(), key=lambda i: i["id"])
+        if t.get("kind") == "recall_due" and t.get("merchant_id") != merchant_id and t.get("customer_id")
+    )
     customer = customers[recall["customer_id"]]
     bot.push("customer", customer["customer_id"], 1, customer, now)
     bot.push("trigger", recall["id"], 1, recall, later)
@@ -225,7 +246,7 @@ def main() -> int:
 
     phase_one(bot, categories, merchants, customers, t0)
     sent = phase_two(bot, triggers, t0)
-    phase_three(bot, categories, merchants, customers, triggers, t0)
+    phase_three(bot, categories, merchants, customers, triggers, t0, sent)
 
     print(f"\n{len(sent)} actions across the test window")
     if failures:

@@ -29,6 +29,10 @@ HINDI_MARKERS = (
 
 URL_PATTERN = re.compile(r"https?://|www\.|\b[a-z0-9-]+\.(com|in|org|net|co)\b", re.IGNORECASE)
 MARKDOWN_PATTERN = re.compile(r"\*\*|^#{1,6}\s|\[.+\]\(.+\)", re.MULTILINE)
+# Payload values are enum codes ("postcard_or_phone_call", "kids_yoga_post").
+# One reaching a body has leaked a field name at the merchant; it has happened
+# twice, so it is a rule rather than a habit.
+RAW_CODE_PATTERN = re.compile(r"\b[a-z]+(?:_[a-z]+)+\b")
 DEVANAGARI_PATTERN = re.compile(r"[ऀ-ॿ]")
 PROPER_NOUN_PATTERN = re.compile(r"\b[A-Z][a-zA-Z]{2,}")
 CTA_PATTERN = re.compile(r"\breply\b|\bwant me to\b|\bshall i\b|\bwould you like\b", re.IGNORECASE)
@@ -99,6 +103,10 @@ def check(
 
     if MARKDOWN_PATTERN.search(body):
         failures.append("body contains markdown, which WhatsApp renders literally")
+
+    leaked = RAW_CODE_PATTERN.search(body)
+    if leaked:
+        failures.append(f"raw payload code {leaked.group()!r} — convert it to plain words")
 
     for taboo in category.get("voice", {}).get("vocab_taboo", []):
         if taboo.lower() in lowered:

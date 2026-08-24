@@ -32,23 +32,41 @@ class SendLedger:
     """What has already gone out, so the same thing does not go out twice."""
 
     suppression_keys: set[str] = field(default_factory=set)
-    merchant_kinds: set[tuple[str, str]] = field(default_factory=set)
+    # Keyed by recipient — the customer for a message sent on the shop's behalf,
+    # the merchant otherwise.
+    recipient_kinds: set[tuple[str, str]] = field(default_factory=set)
     last_send_at: dict[str, datetime] = field(default_factory=dict)
     suppressed_merchants: set[str] = field(default_factory=set)
+    version_at_last_send: dict[str, int] = field(default_factory=dict)
 
-    def record(self, merchant_id: str, kind: str, suppression_key: str, now: datetime) -> None:
+    def record(
+        self, merchant_id: str, recipient_id: str, kind: str, suppression_key: str, now: datetime, version: int
+    ) -> None:
         self.suppression_keys.add(suppression_key)
-        self.merchant_kinds.add((merchant_id, kind))
-        self.last_send_at[merchant_id] = now
+        self.recipient_kinds.add((recipient_id, kind))
+        self.last_send_at[recipient_id] = now
+        self.version_at_last_send[merchant_id] = version
+
+    def has_fresh_context(self, merchant_id: str, version: int) -> bool:
+        """A newer merchant context than the one we last wrote from.
+
+        The judge injects updated performance mid-window and scores whether the
+        bot notices, so a version bump has to outrank the quiet rules — otherwise
+        every merchant we have already spoken to is muted for the whole of
+        Phase 3, which is where the adaptation bonus lives.
+        """
+        seen = self.version_at_last_send.get(merchant_id)
+        return seen is not None and version > seen
 
     def suppress_merchant(self, merchant_id: str) -> None:
         self.suppressed_merchants.add(merchant_id)
 
     def clear(self) -> None:
         self.suppression_keys.clear()
-        self.merchant_kinds.clear()
+        self.recipient_kinds.clear()
         self.last_send_at.clear()
         self.suppressed_merchants.clear()
+        self.version_at_last_send.clear()
 
 
 def _parse_time(value: str) -> datetime | None:
@@ -105,13 +123,32 @@ def select(
             continue
         if trigger.get("suppression_key") in ledger.suppression_keys:
             continue
-        # The dataset emits several triggers of one kind per merchant with different
-        # suppression keys, so the key alone does not stop a duplicate message.
-        if (merchant_id, kind) in ledger.merchant_kinds:
+
+        customer_id = trigger.get("customer_id")
+        customer = store.get("customer", customer_id) if customer_id else None
+        # A customer-scoped trigger without its customer context has nobody to
+        # write to. Sending anyway addresses the shop owner with copy meant for
+        # their customer, which reads as a mistake because it is one.
+        if customer_id and not customer:
             continue
 
-        last_send = ledger.last_send_at.get(merchant_id)
-        if last_send and (now - last_send).total_seconds() < MERCHANT_COOLDOWN_SECONDS:
+        # The quiet rules protect a reader from being written to twice, so they
+        # are scoped to whoever actually receives the message. A reminder sent to
+        # a customer on the shop's behalf never reaches the shop owner, and must
+        # not be silenced by a message the owner got ten minutes ago.
+        recipient_id = customer_id or merchant_id
+
+        # A newer merchant context waives the quiet rules once — but never the
+        # suppression key, so the identical trigger still cannot fire twice.
+        fresh_context = ledger.has_fresh_context(merchant_id, stored_merchant.version)
+
+        # The dataset emits several triggers of one kind per merchant with different
+        # suppression keys, so the key alone does not stop a duplicate message.
+        if not fresh_context and (recipient_id, kind) in ledger.recipient_kinds:
+            continue
+
+        last_send = ledger.last_send_at.get(recipient_id)
+        if not fresh_context and last_send and (now - last_send).total_seconds() < MERCHANT_COOLDOWN_SECONDS:
             continue
 
         urgency = trigger.get("urgency", 1)
@@ -121,14 +158,6 @@ def select(
 
         category = store.get("category", merchant.get("category_slug", ""))
         if not category:
-            continue
-
-        customer_id = trigger.get("customer_id")
-        customer = store.get("customer", customer_id) if customer_id else None
-        # A customer-scoped trigger without its customer context has nobody to
-        # write to. Sending anyway addresses the shop owner with copy meant for
-        # their customer, which reads as a mistake because it is one.
-        if customer_id and not customer:
             continue
 
         candidates.append(

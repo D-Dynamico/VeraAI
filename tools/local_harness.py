@@ -80,7 +80,8 @@ def main() -> int:
 
     failures_by_rule = Counter()
     composed_by_kind = Counter()
-    blocked = 0
+    blocked_consent = 0
+    blocked_unsupported = 0
     bodies = []
     examples = []
 
@@ -94,7 +95,10 @@ def main() -> int:
         pack = build_fact_pack(category, merchant, trigger, customer, today=TODAY)
         message = compose_from_template(pack, build_cohort(merchant, all_merchants))
         if message is None:
-            blocked += 1
+            if pack.blocked_reason:
+                blocked_consent += 1
+            else:
+                blocked_unsupported += 1
             continue
 
         composed_by_kind[trigger["kind"]] += 1
@@ -106,7 +110,7 @@ def main() -> int:
             examples.append((trigger["id"], problems, message.body))
 
     print(f"composed        {sum(composed_by_kind.values())}")
-    print(f"blocked         {blocked} (consent)")
+    print(f"blocked         {blocked_consent} (consent), {blocked_unsupported} (contexts do not support the claim)")
     print(f"distinct bodies {len(set(bodies))} of {len(bodies)}")
     print(f"kinds covered   {len(composed_by_kind)}")
 

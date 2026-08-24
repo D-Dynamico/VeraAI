@@ -141,12 +141,20 @@ async def tick(request: TickRequest) -> dict[str, Any]:
             continue
         merchant_id = candidate.merchant["merchant_id"]
         kind = candidate.trigger.get("kind", "")
-        ledger.record(merchant_id, kind, candidate.trigger.get("suppression_key", ""), now)
+        customer_id = candidate.trigger.get("customer_id")
+        ledger.record(
+            merchant_id,
+            customer_id or merchant_id,
+            kind,
+            candidate.trigger.get("suppression_key", ""),
+            now,
+            store.version_of("merchant", merchant_id),
+        )
         actions.append(
             {
                 "conversation_id": f"conv_{merchant_id}_{kind}_{now:%Y%m%d}",
                 "merchant_id": merchant_id,
-                "customer_id": candidate.trigger.get("customer_id"),
+                "customer_id": customer_id,
                 "send_as": message.send_as,
                 "trigger_id": candidate.trigger["id"],
                 "template_name": f"vera_{kind}_v1",

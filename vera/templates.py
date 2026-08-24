@@ -98,6 +98,12 @@ def _payload(pack: FactPack, key: str, default: Any = None) -> Any:
     return pack.trigger_payload.get(key, default)
 
 
+def _readable(value: Any) -> str:
+    """Payload values are enum codes. Printing one raw ("kids_yoga_post") reads
+    as a bot leaking its own field names, so nothing goes into a body unconverted."""
+    return str(value).replace("_", " ").strip()
+
+
 # Metric names arrive as field names. A shop owner reads plain words, and the
 # words have to fit the sentence - "your people finding you on Google are down"
 # is what a label map alone produces, so each metric carries its own sentence.
@@ -314,22 +320,45 @@ def _perf_dip(pack: FactPack, proof: Fact | None) -> Draft:
     )
 
 
-def _perf_spike(pack: FactPack, proof: Fact | None) -> Draft:
-    metric = _metric_label(_payload(pack, "metric"), "views")
+def _largest_rise(delta_7d: dict[str, Any]) -> tuple[str, float] | None:
+    """The metric that actually rose most, or None if none did.
+
+    `ctr` is excluded deliberately: it has no plain-English label, and §9 bans
+    the term itself.
+    """
+    rises = [
+        (key.removesuffix("_pct"), float(value))
+        for key, value in delta_7d.items()
+        if isinstance(value, (int, float)) and value > 0 and key.removesuffix("_pct") in METRIC_WORDS
+    ]
+    return max(rises, key=lambda item: item[1]) if rises else None
+
+
+def _perf_spike(pack: FactPack, proof: Fact | None) -> Draft | None:
+    metric_key = _payload(pack, "metric")
     delta = _payload(pack, "delta_pct")
     driver = _payload(pack, "likely_driver", "")
-    if delta:
-        rise = round(abs(float(delta)) * 100)
-        pack.license_numbers(rise)
-        anchor = _movement_sentence(_payload(pack, "metric"), "views", rise, rising=True)
-    else:
-        anchor = f"your {metric} are climbing this week"
+    if delta is None:
+        # Most triggers ship a placeholder payload, so the merchant's own delta_7d
+        # is the only evidence a spike happened — and it sometimes says the
+        # opposite. Claiming a rise the merchant's numbers deny is the unfounded
+        # claim the rubric caps at 5, and it carries no digit for the number
+        # check to catch, so the guard has to live here.
+        risen = _largest_rise(pack.performance.get("delta_7d", {}))
+        if risen is None:
+            return None
+        metric_key, delta = risen
+    rise = round(abs(float(delta)) * 100)
+    if rise < 1:
+        return None
+    pack.license_numbers(rise)
+    anchor = _movement_sentence(metric_key, "views", rise, rising=True)
     return Draft(
         anchor=anchor,
-        context=f"Looks like {driver} did it." if driver else "Good time to keep the run going.",
+        context=f"Looks like your {_readable(driver)} did it." if driver else "Good time to keep the run going.",
         ask="Want me to put up a post while people are already looking?",
         cta="binary",
-        rationale=f"Rise in {metric}; converted it into a reason to act now.",
+        rationale=f"Rise in {_metric_label(metric_key, 'views')} of {rise}%; converted it into a reason to act now.",
     )
 
 
@@ -566,7 +595,8 @@ BUILDERS: dict[str, Callable[[FactPack, Fact | None], Draft]] = {
 
 
 def plan_message(pack: FactPack, cohort: Cohort | None = None) -> tuple[Draft, Fact | None] | None:
-    """Decide what this message says. Returns None when consent blocks the send."""
+    """Decide what this message says. None when nothing may be said: consent, a
+    customer kind with no customer, or a builder the contexts cannot support."""
     if pack.blocked_reason:
         return None
 
@@ -578,7 +608,10 @@ def plan_message(pack: FactPack, cohort: Cohort | None = None) -> tuple[Draft, F
         return None
 
     builder = BUILDERS.get(pack.trigger_kind, _generic)
-    return builder(pack, proof), proof
+    draft = builder(pack, proof)
+    # A builder returns None when the trigger fired but the contexts do not
+    # support the claim it would have to make. Silence beats an unfounded send.
+    return (draft, proof) if draft else None
 
 
 def assemble(pack: FactPack, draft: Draft, proof: Fact | None) -> ComposedMessage:
