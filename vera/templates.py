@@ -7,6 +7,7 @@ single low-friction ask at the end. No jargon, no percentages-off, no URLs.
 
 import re
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Callable
 
 from vera.cohort import Cohort, social_proof_fact
@@ -99,6 +100,15 @@ def _upper_first(text: str) -> str:
 
 def _payload(pack: FactPack, key: str, default: Any = None) -> Any:
     return pack.trigger_payload.get(key, default)
+
+
+def _day_and_month(iso: str) -> str:
+    """"2026-04-28T00:00:00+05:30" -> "28 April". Empty when the payload has no date."""
+    try:
+        moment = datetime.fromisoformat(str(iso).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return ""
+    return f"{moment.day} {moment.strftime('%B')}"
 
 
 def _readable(value: Any) -> str:
@@ -460,7 +470,7 @@ def _active_planning_intent(pack: FactPack, proof: Fact | None) -> Draft:
 
 
 def _recall_due(pack: FactPack, proof: Fact | None) -> Draft:
-    service = str(_payload(pack, "service_due", "your check-up")).replace("_", " ")
+    service = str(_payload(pack, "service_due", "check-up")).replace("_", " ")
     slots = _payload(pack, "available_slots", []) or []
     labels = [slot.get("label", "") for slot in slots if slot.get("label")]
     gap = f"It has been {pack.months_since_visit} months since your last visit" if pack.months_since_visit else "It has been a while since your last visit"
@@ -477,8 +487,11 @@ def _recall_due(pack: FactPack, proof: Fact | None) -> Draft:
 
 def _appointment_tomorrow(pack: FactPack, proof: Fact | None) -> Draft:
     return Draft(
-        anchor="you have an appointment with us tomorrow",
-        context=f"{pack.business_name} here. Nothing needed from you, just a reminder.",
+        # The payload for this kind carries no time and no service, so the shop's
+        # own name is the only checkable thing available to open on.
+        anchor=f"your appointment at {pack.business_name} is tomorrow",
+        anchor_opens_on_a_name=False,
+        context="Nothing needed from you, just a reminder.",
         ask="Reply YES to confirm, or tell us a better time.",
         cta="binary",
         rationale="Day-before reminder; confirmation ask kept to one word.",
@@ -486,15 +499,22 @@ def _appointment_tomorrow(pack: FactPack, proof: Fact | None) -> Draft:
     )
 
 
-def _chronic_refill_due(pack: FactPack, proof: Fact | None) -> Draft:
+def _chronic_refill_due(pack: FactPack, proof: Fact | None) -> Draft | None:
     molecules = _payload(pack, "molecule_list", []) or []
+    if not molecules:
+        # The expander fires this kind at gyms, dentists and restaurants with an
+        # empty payload. There is no prescription to remind anyone about, but the
+        # customer's own visit history is real and says the same thing — you are
+        # due. One of these is a canonical test pair, so silence would score zero.
+        return _customer_lapsed_soft(pack, proof) if pack.is_customer_facing else None
     runs_out = _payload(pack, "stock_runs_out_iso", "")
     pack.license_numbers(runs_out)
-    names = ", ".join(str(molecule) for molecule in molecules) if molecules else "your regular medicines"
+    names = ", ".join(str(molecule) for molecule in molecules)
     delivers = bool(_payload(pack, "delivery_address_saved", False))
     where = "send it to your saved address" if delivers else "keep it ready at the counter"
+    runs_out_day = _day_and_month(runs_out)
     return Draft(
-        anchor=f"your {names} should be running out around now",
+        anchor=f"your {names} run out around {runs_out_day}" if runs_out_day else f"your {names} should be running out around now",
         context=f"{pack.business_name} here. We can {where}.",
         ask="Reply YES and we will pack it for you.",
         cta="binary",
@@ -605,7 +625,10 @@ def plan_message(pack: FactPack, cohort: Cohort | None = None) -> tuple[Draft, F
     if pack.blocked_reason:
         return None
 
-    proof = social_proof_fact(cohort, {"performance": pack.performance}, _shop_word(pack)) if cohort else None
+    # Peer call volumes are the owner's numbers. A customer told "you are getting
+    # 55 calls a month" has been handed the shop's dashboard by mistake.
+    use_cohort = cohort and not pack.is_customer_facing
+    proof = social_proof_fact(cohort, {"performance": pack.performance}, _shop_word(pack)) if use_cohort else None
     if proof:
         pack.license(proof)
 
@@ -621,11 +644,15 @@ def plan_message(pack: FactPack, cohort: Cohort | None = None) -> tuple[Draft, F
 
 def assemble(pack: FactPack, draft: Draft, proof: Fact | None) -> ComposedMessage:
     """Turn the decided parts into the message. Shared by the template and LLM paths."""
+    # Week-on-week movement is the owner's number too, for the same reason as the
+    # peer comparison in plan_message: it means nothing to the customer reading it.
+    deltas = [] if pack.is_customer_facing else pack.changed_metrics
+
     anchor, demoted = draft.anchor, ""
     if not opens_on_an_anchor(f"x, {anchor}"):
         # A soft opener wastes the only line WhatsApp shows in the notification,
         # so promote a fact that can actually be checked and keep the rest.
-        replacement = pack.changed_metrics[0] if pack.changed_metrics else proof
+        replacement = deltas[0] if deltas else proof
         if replacement:
             anchor, demoted = replacement.text, draft.anchor
 
@@ -647,9 +674,9 @@ def assemble(pack: FactPack, draft: Draft, proof: Fact | None) -> ComposedMessag
 
     if demoted:
         add(demoted)
-    if pack.changed_metrics:
+    if deltas:
         # Naming what moved since the last push is what the adaptation score rewards.
-        add(pack.changed_metrics[0].text)
+        add(deltas[0].text)
     if draft.context.strip():
         add(draft.context)
     if draft.hindi_mood and speaks_hindi(pack):
