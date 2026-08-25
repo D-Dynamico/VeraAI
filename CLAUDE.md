@@ -8,7 +8,7 @@ Context file for any session working in this repo. Everything below was derived 
 
 A challenge submission workspace. The task: **build a merchant-engagement AI bot ("Vera") that talks to Indian local-commerce merchants on WhatsApp**, composed from four context layers, and is scored by an LLM judge harness.
 
-As of this writing the repo contains **spec + data only — no implementation code yet**.
+Phases 1-5 and 7 are built; §10 tracks what is left. The table below is the **provided** material only — everything written for the submission lives in `vera/`, `tools/`, `bot.py` and `make_submission.py`, and is described in §7.
 
 ### Files present (all provided by the challenge, none written by us)
 
@@ -263,9 +263,9 @@ Seven phases. Each ends in something runnable — no phase leaves the repo in a 
 6. Idle check: leave it untouched ~20 minutes and confirm `uptime_seconds` kept climbing rather than reset
 
 **Phase 7 — Submission artifacts.** ~1 hour
-1. `bot.py` — the offline `compose()` over the same core
-2. `make_submission.py` → `submission.jsonl`, 30 lines
-3. `README.md` — approach, tradeoffs, what extra context would have helped
+1. `bot.py` — the offline `compose()` over the same core *(done)*
+2. `make_submission.py` → `submission.jsonl`, 30 lines *(done)*
+3. `README.md` — approach, tradeoffs, what extra context would have helped *(done)*
 
 ---
 
@@ -374,6 +374,10 @@ python tools/review_page.py
 
 # The judge's real Phase 1-3 lifecycle against a running bot. No LLM.
 python tools/rehearsal.py --url http://127.0.0.1:8123
+
+# The offline artifacts. make_submission re-validates every body and writes nothing
+# if one fails; it uses Gemini when GEMINI_API_KEY is set and templates when it is not.
+PYTHONIOENCODING=utf-8 python make_submission.py
 
 # Rehearse the judge's scoring (reads BOT_URL / LLM_API_KEY / TEST_SCENARIO from the
 # environment — the file was patched so no key is ever pasted into a tracked file)
