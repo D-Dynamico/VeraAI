@@ -473,10 +473,17 @@ def _recall_due(pack: FactPack, proof: Fact | None) -> Draft:
     service = str(_payload(pack, "service_due", "check-up")).replace("_", " ")
     slots = _payload(pack, "available_slots", []) or []
     labels = [slot.get("label", "") for slot in slots if slot.get("label")]
-    gap = f"It has been {pack.months_since_visit} months since your last visit" if pack.months_since_visit else "It has been a while since your last visit"
     times = f" We have {' and '.join(labels)} open." if labels else ""
+    # The visit gap is only set for a customer who has actually lapsed. Without
+    # it there is nothing checkable in "it has been a while", so open on the
+    # shop's own name instead — the same fallback _appointment_tomorrow uses.
+    anchor = (
+        f"It has been {pack.months_since_visit} months since your last visit and your {service} is due"
+        if pack.months_since_visit
+        else f"your {service} at {pack.business_name} is due"
+    )
     return Draft(
-        anchor=f"{gap} and your {service} is due",
+        anchor=anchor,
         context=f"{pack.business_name} here.{times}",
         ask="Reply YES and we will hold one for you.",
         cta="binary",

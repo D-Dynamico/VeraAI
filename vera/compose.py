@@ -93,13 +93,20 @@ def _prompt(pack: FactPack, facts: list[str], ask: str) -> str:
     )
 
 
-def _problems(body: str | None, job: ComposeJob) -> list[str]:
+def _problems(body: str | None, job: ComposeJob, template_body: str) -> list[str]:
     if not body:
         return ["no response"]
     failures = check(body, job.pack, job.category)
     expected = salutation(job.pack)
     if not body.startswith(expected):
         failures.append(f"dropped the salutation {expected!r}")
+    # "Service @ ₹price" is the format the brief rewards; a percentage discount
+    # is its named anti-pattern. The model likes to smooth "@ ₹499" into "at
+    # 499", which check() cannot see because 499 is a licensed number — the
+    # digits survive and only the shape is lost. Demand the title verbatim.
+    offer_title = job.pack.offer_title
+    if offer_title and offer_title in template_body and offer_title not in body:
+        failures.append(f"reworded the offer {offer_title!r}")
     return failures
 
 
@@ -175,17 +182,24 @@ class Composer:
             self.calls_made += 1
             body = await self._ask_model(client, PRIMARY_MODEL, prompt, key)
 
-        problems = _problems(body, job)
+        problems = _problems(body, job, template_message.body)
         if problems:
             self.rejections.append((job.cache_key, problems))
             # One retry on the weaker model rather than a second call to the same
             # one, which at temperature 0 would return the same text.
             async with semaphore:
+                # The primary call can itself have consumed the budget. Without
+                # this the retry chains a second PER_CALL_TIMEOUT on top and the
+                # tick answers past the judge's 15s client timeout, losing every
+                # message in it — with a valid template already in hand.
+                if time.monotonic() > deadline:
+                    self.fallbacks += 1
+                    return template_message
                 self.calls_made += 1
                 body = await self._ask_model(client, FALLBACK_MODEL, prompt, key)
 
         if body:
-            problems = _problems(body, job)
+            problems = _problems(body, job, template_message.body)
             if problems:
                 self.rejections.append((f"{job.cache_key} (retry)", problems))
         if not body or problems:

@@ -13,6 +13,10 @@ from typing import Any
 # A trigger kind is allowed to reach a customer if their consent covers it. Most
 # generated customers carry only "promotional_offers", so that acts as broad
 # consent when the specific scope is absent.
+# The states a "it has been N months" line can honestly be said to. "active" and
+# "new" customers are excluded: 98 and 19 of the 200 in the expanded set.
+LAPSED_STATES = ("lapsed_soft", "lapsed_hard", "churned")
+
 CONSENT_BY_KIND = {
     "recall_due": ("recall_reminders", "recall_alerts"),
     "appointment_tomorrow": ("appointment_reminders",),
@@ -259,7 +263,14 @@ def build_fact_pack(
             pack.customer_name = customer_identity.get("name", "")
             pack.customer_state = customer.get("state")
             pack.customer_language = customer_identity.get("language_pref", "english")
-            pack.months_since_visit = _months_between(relationship.get("last_visit", ""), today)
+            # A gap claim only makes sense to someone who has actually lapsed.
+            # Telling an "active" or "new" customer it has been four months
+            # contradicts the context the judge reads beside the message, and no
+            # validator catches it: the number is licensed and arithmetically
+            # true, it is just wrong about who is reading. The templates already
+            # fall through to "it has been a while" when this is None.
+            if pack.customer_state in LAPSED_STATES:
+                pack.months_since_visit = _months_between(relationship.get("last_visit", ""), today)
             pack.last_service = services[-1].replace("_", " ") if services else None
             pack.preferred_slots = customer.get("preferences", {}).get("preferred_slots", "").replace("_", " ") or None
             pack.license_numbers(pack.months_since_visit, relationship.get("visits_total", ""))
