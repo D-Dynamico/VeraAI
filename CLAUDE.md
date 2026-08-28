@@ -46,6 +46,21 @@ Specificity · Category fit · Merchant fit · Trigger relevance (the simulator 
 
 Plus: Phase 3 adaptation bonus (max +5/dim), Phase 4 replay (top 10 only, max +30), operational penalties (max -20).
 
+### Published technical constraints, and our margin
+
+| Constraint | Published | Ours | Note |
+|---|---|---|---|
+| Response timeout | 30s | tick max 4.57s | but the simulator enforces **15s** tick/reply, **5s** healthz/metadata — build to those |
+| Judge request rate | 10 req/s | 300/300 clean at 10/s | fresh connection per request; this is what rules out ngrok (§6) |
+| Context payload | 500 KB | largest 6.8 KB | 1.4% of cap |
+| Actions per tick | 20 | self-capped at 8 | `policy.py:14`, a restraint choice not a limit |
+
+### Published testing flow
+
+Warmup (health + metadata, then base contexts) → **test window: 60 simulated minutes, a push and a `/v1/tick` every 5** (twelve ticks, which is exactly what `tools/rehearsal.py` runs) → adaptive injection (fresh digest items, metric shifts, new triggers, surprise customer scopes) → replay test (top 10 only) → score report with transcripts and judge rationale.
+
+The window is **simulated** time. The tick path therefore runs on the judge's clock: `app.py:112` uses `_parse_now(request.now)` and passes `today=now.date()` into the fact pack, with wall-clock only as a parse-error fallback. `date.today()` is never reached on a live path — `bot.py` passes the frozen `DATASET_AS_OF` instead.
+
 ---
 
 ## 3. Non-obvious facts worth remembering
@@ -111,15 +126,27 @@ customer: customer_id, merchant_id, identity{name, phone_redacted, language_pref
 ## 6. Decisions already made (do not re-litigate without the user)
 
 - **LLM for composition: Gemini free tier** (Google AI Studio key, `GEMINI_API_KEY`).
-- **Deployment: ngrok tunnel to a local uvicorn process.** `challenge-testing-brief.md` §6 lists a tunnel alongside the clouds as an accepted deployment, so this is within the rules, not a workaround. Whatever serves the bot must be **single instance, single worker, no autoscaling, no scale-to-zero**, because context state is in-memory and a restart mid-test fails warmup (3 consecutive healthz failures = disqualification for that slot).
+- **Deployment: cloudflared quick tunnel to a local uvicorn process.** `challenge-testing-brief.md` §6 lists a tunnel alongside the clouds as an accepted deployment, so this is within the rules, not a workaround. Whatever serves the bot must be **single instance, single worker, no autoscaling, no scale-to-zero**, because context state is in-memory and a restart mid-test fails warmup (3 consecutive healthz failures = disqualification for that slot).
 
   **No Docker on the live path.** The image existed because a cloud needs one. Serving a tunnel from localhost, it only adds a daemon that has to survive the window — and Docker Desktop stopped twice unprompted during one build session. `python -m uvicorn` has strictly fewer things that can die.
 
-  **Why not a cloud.** Fly, Render paid, Railway and Cloud Run all gate *app creation* on a credit card, which is not available here; Render's free tier is separately disqualifying because it scales to zero. ngrok's free plan needs no card for HTTP/S endpoints and includes one static domain that survives tunnel restarts. Hugging Face Spaces was rejected on reports that its Docker SDK is now paid, and Cloudflare quick tunnels on their changing URL.
+  **Why not a cloud.** Fly, Render paid, Railway and Cloud Run all gate *app creation* on a credit card, which is not available here; Render's free tier is separately disqualifying because it scales to zero. Hugging Face Spaces was rejected on reports that its Docker SDK is now paid.
+
+  **Why not ngrok — measured, not assumed.** ngrok was the original choice for its static domain, and it is now ruled out. Its free plan refuses new connections after **~100** (reproduced three times: broke at 99, 103, 104). This is not the documented 4,000 requests/min limit, which we never approach: 300 requests over a *single* keep-alive connection ran clean at 12.5 req/s. The cap is on **connections**, and `judge_simulator.py:401` — the harness's own `BotClient` — uses `urllib.request.urlopen`, which pools nothing and opens a fresh TCP+TLS connection per call. Warmup is 255 contexts, so it is 255 connections; at the judge's stated ceiling of 10 req/s the cap is exhausted in ten seconds. A rehearsal through ngrok died in phase 1 with `SSL: UNEXPECTED_EOF_WHILE_READING`. The throttle recovers in 10-20s, but we do not own the client and it does not retry. Keep the ngrok authtoken and the Defender exclusion: a paid plan lifts the cap and the static domain becomes the better option again.
 
   **What this costs.** Your machine *is* the server. §4 of the testing brief puts warmup at T-15 and the report at T0+90, so it must stay awake and online for **~105 minutes**, not 60 — no sleep, no update reboot, no Wi-Fi drop, from URL submission to the end of judging.
 
-  **Untested risk.** ngrok free shows a browser interstitial on HTTP/S endpoints. It is User-Agent driven and a Python client should pass through, but this must be proven by running `tools/rehearsal.py` or `judge_simulator.py` through the tunnel before submitting. Fallback is `cloudflared`.
+  **The accepted risk: a perishable URL.** A cloudflared quick tunnel's hostname is created with the process and dies with it. If it drops mid-window the submitted URL is dead and restarting yields a *different* one, so there is no recovery — a supervisor that restarts the tunnel just produces a URL nobody has. The mitigation is entirely preventive and belongs in a pre-window checklist: never-sleep power plan, updates paused, ethernet over Wi-Fi, nothing else launched, and both processes up by T-20. Named Cloudflare tunnels give a stable hostname but need a domain on a Cloudflare zone, which is not available here.
+
+  **Measured through the tunnel** (`tools/rehearsal.py`, full lifecycle, LLM live). All ten checks pass. Against the published caps — 30s response, 10 req/s from the judge, 500 KB context, 20 actions per tick:
+
+  | Endpoint | p50 | max | budget | used |
+  |---|---|---|---|---|
+  | `/v1/tick` | 2.09s | 4.57s | 15s | 30.5% |
+  | `/v1/context` | 0.12s | 0.46s | 30s | 1.5% |
+  | `/v1/healthz` | — | 0.42s | 5s | 8.3% |
+
+  Budgets are the simulator's 15s/5s, not the published 30s; where the two disagree, build to the tighter. Load: 300 requests at exactly 10 req/s with a fresh connection each, zero errors, p95 678ms. Largest context is 6.8 KB (1.4% of the 500 KB cap); `policy.py` self-caps at 8 actions per tick against the cap of 20.
 
   `Dockerfile` and `fly.toml` stay in the repo but off the live path. They are the cloud route the moment a card exists, and building the image is still the cleanest proof that `.dockerignore` omitted nothing the app needs.
 - **Scope: full** — HTTP server *and* the §7 offline artifacts, sharing one composer core.
@@ -258,14 +285,16 @@ Seven phases. Each ends in something runnable — no phase leaves the repo in a 
 1. `requirements.txt`, `Dockerfile`, `.dockerignore`, `fly.toml` — single instance, single uvicorn worker, no autoscaling, no scale-to-zero *(done)*
 2. Real contact details in `/v1/metadata` *(done)*
 3. `tools/rehearsal.py` — the judge's real Phase 1-3 lifecycle offline: 255 contexts, twelve ticks, the three injections *(done)*
-4. ngrok static domain over local uvicorn; `GEMINI_API_KEY` read from `.env`
-5. Re-run `tools/rehearsal.py` **through the tunnel** — this is what settles the interstitial question — then `judge_simulator.py`
+4. cloudflared quick tunnel over local uvicorn; `GEMINI_API_KEY` read from `.env` *(done)*
+5. Re-run `tools/rehearsal.py` **through the tunnel** — all ten checks pass, latency table in §6 *(done)*
 6. Idle check: leave it untouched ~20 minutes and confirm `uptime_seconds` kept climbing rather than reset
 
 **Phase 7 — Submission artifacts.** ~1 hour
 1. `bot.py` — the offline `compose()` over the same core *(done)*
 2. `make_submission.py` → `submission.jsonl`, 30 lines *(done)*
 3. `README.md` — approach, tradeoffs, what extra context would have helped *(done)*
+
+Phase 7 is complete; `submission.jsonl` is 30 lines, 30 distinct bodies, zero template fallbacks.
 
 ---
 
@@ -282,7 +311,7 @@ Seven phases. Each ends in something runnable — no phase leaves the repo in a 
 | Tests | pytest | 8.2.0 | Validator, fact-pack, and reply-path assertions |
 | Config | environment variables (`GEMINI_API_KEY`), with `.env` read directly for local runs | — | Key never lands in the repo. `compose.api_key()` parses `.env` itself, so python-dotenv is **not** a dependency |
 | Persistence | none — in-memory dicts | — | The brief permits it; it forces the single-instance deploy constraint in §6 |
-| Deploy | local uvicorn behind an ngrok static domain | — | Single instance, single worker. `Dockerfile`/`fly.toml` are kept for the cloud path but are not on the live path (§6) |
+| Deploy | local uvicorn behind a cloudflared quick tunnel | — | Single instance, single worker. `Dockerfile`/`fly.toml` are kept for the cloud path but are not on the live path (§6) |
 
 Deliberately **not** used: no database, no vector store, no LangChain or agent framework, no Gemini SDK. Every one of those would add a dependency, a failure mode, and cold-start latency without earning a point on the rubric.
 
@@ -372,8 +401,12 @@ python tools/local_harness.py            # add --llm N to compare N against Gemi
 # Every composition as a WhatsApp bubble -> review.html. No network.
 python tools/review_page.py
 
-# The judge's real Phase 1-3 lifecycle against a running bot. No LLM.
+# The judge's real Phase 1-3 lifecycle against a running bot.
 python tools/rehearsal.py --url http://127.0.0.1:8123
+
+# Bring up the public tunnel. The URL is printed to the log and dies with the
+# process — capture it, verify it, then do not restart anything (§6).
+cloudflared tunnel --url http://127.0.0.1:8123 --no-autoupdate
 
 # The offline artifacts. make_submission re-validates every body and writes nothing
 # if one fails; it uses Gemini when GEMINI_API_KEY is set and templates when it is not.
