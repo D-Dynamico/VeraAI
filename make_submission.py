@@ -58,7 +58,10 @@ def main() -> int:
             problems.append(f"{pair['test_id']}: no body — {result['rationale']}")
             continue
 
-        for failure in check(result["body"], pack, category):
+        # Passing the bodies already accepted makes the "distinct bodies" count
+        # printed below enforceable rather than decorative: a verbatim repeat is
+        # -2 per the testing brief, and this is the last gate before the file.
+        for failure in check(result["body"], pack, category, already_sent=[line["body"] for line in lines]):
             problems.append(f"{pair['test_id']}: {failure}")
 
         lines.append({"test_id": pair["test_id"], **{field: result[field] for field in FIELDS[1:]}})

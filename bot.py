@@ -86,7 +86,19 @@ def compose_with_pack(
     # it returns is re-validated before it is accepted. With no key the template
     # output stands, which is why this artifact runs without one.
     if api_key():
-        job = ComposeJob(pack=pack, category=category, cohort=cohort, cache_key=f"offline:{trigger.get('id', '')}")
+        # Keyed on the whole pair, not just the trigger. A trigger dict without
+        # "id" would otherwise give every call the same key, and a cache hit
+        # returns the cached body verbatim — so pair two would ship pair one's
+        # message. The merchant and customer ids keep the key distinct even then.
+        cache_key = ":".join(
+            (
+                "offline",
+                str(merchant.get("merchant_id", "")),
+                str(trigger.get("id", trigger.get("kind", ""))),
+                str((customer or {}).get("customer_id", "")),
+            )
+        )
+        job = ComposeJob(pack=pack, category=category, cohort=cohort, cache_key=cache_key)
         message = composer.compose(job) or message
 
     return {
