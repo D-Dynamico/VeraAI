@@ -16,3 +16,6 @@ __pycache__/
 .venv/
 venv/
 .pytest_cache/
+
+# runtime logs and the perishable tunnel URL from tools/serve.ps1
+logs/
