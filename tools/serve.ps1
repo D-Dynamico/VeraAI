@@ -25,6 +25,22 @@ $tunLog  = Join-Path $logDir "cloudflared.log"
 $urlFile = Join-Path $logDir "public-url.txt"
 $local   = "http://127.0.0.1:$Port"
 
+# PATH is not dependable here: a PATH edit never reaches an already-open shell,
+# and launch day is the wrong time to discover that. Fall back to the known
+# install spot before giving up.
+function Resolve-Cloudflared {
+    $onPath = Get-Command cloudflared -ErrorAction SilentlyContinue
+    if ($onPath) { return $onPath.Source }
+    foreach ($candidate in @(
+        (Join-Path $env:USERPROFILE "bin\cloudflared.exe"),
+        (Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Links\cloudflared.exe"),
+        "C:\Program Files (x86)\cloudflared\cloudflared.exe"
+    )) {
+        if (Test-Path $candidate) { return $candidate }
+    }
+    return $null
+}
+
 function Say($text, $colour = "Gray") { Write-Host $text -ForegroundColor $colour }
 function Ok($text)   { Say "  [ok]   $text" "Green" }
 function Bad($text)  { Say "  [FAIL] $text" "Red" }
@@ -111,11 +127,12 @@ if ($existing) {
 }
 Ok "port $Port is free"
 
-if (-not (Get-Command cloudflared -ErrorAction SilentlyContinue)) {
-    Bad "cloudflared is not on PATH"
+$cloudflared = Resolve-Cloudflared
+if (-not $cloudflared) {
+    Bad "cloudflared not found on PATH or in the usual install locations"
     exit 1
 }
-Ok "cloudflared found"
+Ok "cloudflared at $cloudflared"
 
 $envFile = Join-Path $repo ".env"
 if ((Test-Path $envFile) -and (Select-String -Path $envFile -Pattern "GEMINI_API_KEY" -Quiet)) {
@@ -156,7 +173,7 @@ if (-not $up) {
 }
 Ok "uvicorn answering locally"
 
-Start-Process -FilePath "cloudflared" `
+Start-Process -FilePath $cloudflared `
     -ArgumentList "tunnel", "--url", $local, "--no-autoupdate" `
     -WorkingDirectory $repo -RedirectStandardOutput $tunLog -RedirectStandardError "$tunLog.err" `
     -WindowStyle Hidden | Out-Null
