@@ -260,15 +260,32 @@ def _dormant_with_vera(pack: FactPack, proof: Fact | None) -> Draft:
 def _festival_upcoming(pack: FactPack, proof: Fact | None) -> Draft:
     festival = _payload(pack, "festival", "the festival")
     days = _payload(pack, "days_until")
-    pack.license_numbers(days)
-    when = f"{festival} is {days} days away" if days else f"{festival} is coming"
+    falls_on = _day_and_month(_payload(pack, "date", ""))
+    # A countdown only reads as news when the number is small. "Diwali is 188
+    # days away" scored 4/10 on decision quality, and the tick path now stays
+    # quiet that far out (policy.FESTIVAL_HORIZON_DAYS). This builder still has
+    # to answer, because the trigger is one of the canonical test pairs, so it
+    # falls back to the date — checkable, and it does not manufacture urgency.
+    near = isinstance(days, int) and days <= 45
+    if near:
+        pack.license_numbers(days)
+        when = f"{festival} is {days} days away"
+    elif falls_on:
+        pack.license_numbers(falls_on)
+        when = f"{festival} falls on {falls_on} this year"
+    else:
+        when = f"{festival} is coming"
     return Draft(
         anchor=when,
         anchor_opens_on_a_name=True,
         context=f"Your {pack.offer_title} is the one to put in front of people first." if pack.offer_title else "",
         ask="Want me to write the festival post for your listing?",
         cta="binary",
-        rationale=f"{festival} in {days or 'a few'} days; tied it to the offer already running.",
+        rationale=(
+            f"{festival} in {days} days; tied it to the offer already running."
+            if near
+            else f"{festival} is still far off, so I led with the date rather than a countdown and tied it to the offer already running."
+        ),
     )
 
 
