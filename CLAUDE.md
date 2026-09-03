@@ -138,7 +138,7 @@ customer: customer_id, merchant_id, identity{name, phone_redacted, language_pref
 
   **Observed failure: the hostname can be revoked while the process lives.** On 2026-08-29 a quick tunnel stopped resolving after roughly an hour. `cloudflared` was still running and still retrying; the general internet was fine (`cloudflare.com` returned 200); the hostname simply **no longer existed in DNS**, and the agent never issued a replacement — it retried a dead name in a loop. So *process liveness is not evidence the tunnel works*: a watchdog on the process would have reported healthy throughout. Only an end-to-end probe of the public URL detects this, which is what `tools/serve.ps1 -Check` does. Assume it can recur inside the judged window and check the public URL, never the process. Contributing factor unknown; five quick tunnels had been created that evening, so Cloudflare may expire them under churn — during a real window there would be one.
 
-  **The accepted risk: a perishable URL.** A cloudflared quick tunnel's hostname is created with the process and dies with it. If it drops mid-window the submitted URL is dead and restarting yields a *different* one, so there is no recovery — a supervisor that restarts the tunnel just produces a URL nobody has. The mitigation is entirely preventive and belongs in a pre-window checklist: never-sleep power plan, updates paused, ethernet over Wi-Fi, nothing else launched, and both processes up by T-20. Named Cloudflare tunnels give a stable hostname but need a domain on a Cloudflare zone, which is not available here.
+  **The accepted risk: a perishable URL.** A cloudflared quick tunnel's hostname is created with the process and dies with it. If it drops mid-window the submitted URL is dead and restarting yields a *different* one, so there is no recovery — a supervisor that restarts the tunnel just produces a URL nobody has. The mitigation is entirely preventive and lives in **`launch-checklist.md`**: never-sleep power plan, updates paused, ethernet over Wi-Fi, nothing else launched, both processes up by T-20, and a `-Check` probe of the public URL every ten minutes thereafter. Named Cloudflare tunnels give a stable hostname but need a domain on a Cloudflare zone, which is not available here.
 
   **Measured through the tunnel** (`tools/rehearsal.py`, full lifecycle, LLM live). All ten checks pass. Against the published caps — 30s response, 10 req/s from the judge, 500 KB context, 20 actions per tick:
 
@@ -289,7 +289,7 @@ Seven phases. Each ends in something runnable — no phase leaves the repo in a 
 3. `tools/rehearsal.py` — the judge's real Phase 1-3 lifecycle offline: 255 contexts, twelve ticks, the three injections *(done)*
 4. cloudflared quick tunnel over local uvicorn; `GEMINI_API_KEY` read from `.env` *(done)*
 5. Re-run `tools/rehearsal.py` **through the tunnel** — all ten checks pass, latency table in §6 *(done)*
-6. Idle check: leave it untouched ~20 minutes and confirm `uptime_seconds` kept climbing rather than reset
+6. Idle check: leave it untouched ~20 minutes and confirm `uptime_seconds` kept climbing rather than reset *(done — 21 min, uptime grew 1261s over 1260s of wall clock)*
 
 **Phase 7 — Submission artifacts.** ~1 hour
 1. `bot.py` — the offline `compose()` over the same core *(done)*
