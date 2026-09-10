@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import Any, Callable
 
 from vera.cohort import Cohort, social_proof_fact
-from vera.factpack import Fact, FactPack
+from vera.factpack import Fact, FactPack, calls_per_hundred
 from vera.validate import opens_on_an_anchor, speaks_hindi
 
 SHOP_WORD = {
