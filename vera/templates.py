@@ -494,9 +494,24 @@ def _winback_eligible(pack: FactPack, proof: Fact | None) -> Draft:
 
 def _active_planning_intent(pack: FactPack, proof: Fact | None) -> Draft:
     topic = str(_payload(pack, "intent_topic", "what you mentioned")).replace("_", " ")
+    # The topic is the merchant's own words but rarely a number or proper noun,
+    # so "picking up on <topic>" has nothing the anchor check recognises. On the
+    # single-push path there is no delta or cohort proof for assemble() to
+    # promote, and compose.py trusts the template floor without re-validating it,
+    # so the bot would ship an anchorless opener whenever the LLM is unavailable.
+    # Lead with the live offer that fits the intent — a real price — and keep the
+    # topic as the reason. Falls back to the topic opener only with no offer.
+    if pack.offer_title:
+        return Draft(
+            anchor=f"your {pack.offer_title} fits the {topic} you mentioned",
+            context="",
+            ask="Want me to draft it now so you can look it over?",
+            cta="binary",
+            rationale=f"Merchant showed intent on {topic}; led with the live offer that fits it and moved straight to drafting, no re-qualifying.",
+        )
     return Draft(
         anchor=f"picking up on {topic} from your last message",
-        context=f"Your {pack.offer_title} fits it already." if pack.offer_title else "",
+        context="",
         ask="Want me to draft it now so you can look it over?",
         cta="binary",
         rationale=f"Merchant already showed intent on {topic}; moved straight to doing the work, no re-qualifying.",
