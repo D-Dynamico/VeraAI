@@ -235,12 +235,32 @@ def _competitor_opened(pack: FactPack, proof: Fact | None) -> Draft:
 
 
 def _curious_ask_due(pack: FactPack, proof: Fact | None) -> Draft:
+    # The ask itself carries no number, so the opener has to. A bare "you have
+    # been running <shop> a while now" scored 3/10 on specificity: its only
+    # proper noun is the merchant's own name, which tells them nothing and slips
+    # past the anchor-promotion check in assemble(). Lead with the shop's own
+    # call volume — a real number that motivates the "what for?" question — and
+    # carry the strongest positive signal alongside it. (review_theme is not
+    # used here: the pack deliberately holds only the negative theme, and a
+    # complaint is the wrong way to open a curious ask.)
+    calls = pack.performance.get("calls")
+    signal = pack.signal_facts[0] if pack.signal_facts else None
+    if signal:
+        pack.license(signal)
+    if proof:
+        anchor, context = proof.text, (signal.text if signal else "")
+    elif calls:
+        anchor, context = f"{calls} people called you this month", (signal.text if signal else "")
+    elif signal:
+        anchor, context = signal.text, ""
+    else:
+        anchor, context = f"you have been running {pack.business_name} a while now", ""
     return Draft(
-        anchor=proof.text if proof else f"you have been running {pack.business_name} a while now",
-        context="",
+        anchor=anchor,
+        context=context,
         ask=f"What are people asking you for most this week at {pack.business_name}?",
         cta="open_ended",
-        rationale="Scheduled curious ask; the merchant answers about their own shop, which is the cheapest reply to give.",
+        rationale="Scheduled curious ask; opened on the shop's own call volume and standing versus nearby shops, then asked what that demand is for — the cheapest reply to give.",
     )
 
 
