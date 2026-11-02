@@ -41,7 +41,7 @@ Total commitment is **~105 minutes**, not 60 — warmup at T-15, score report at
       and stays inside every rule — but it is a materially weaker submission, and you
       want to know which one you are shipping.
 - [ ] Port 8123 free. `.\tools\serve.ps1 -Stop` if anything is left from a rehearsal.
-- [ ] `PYTHONIOENCODING=utf-8 python -m pytest -q` — 7 pass.
+- [ ] `PYTHONIOENCODING=utf-8 python -m pytest -q` — 61 pass.
 
 ## T-20 — bring it up
 
