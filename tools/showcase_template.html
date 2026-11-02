@@ -234,14 +234,16 @@ section { padding-block: var(--gap-section) 0; }
 
 /* Footer: the close, over the cropped name. */
 .close { margin-top: var(--gap-section); background: var(--ink); color: var(--bg); overflow: hidden; display: grid; grid-template-rows: auto auto auto; row-gap: 0; padding-top: clamp(72px, 9vw, 120px); }
-.close-top { display: grid; grid-template-columns: repeat(12, 1fr); column-gap: 20px; row-gap: 32px; }
+.close-top { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(12, 1fr); column-gap: 20px; row-gap: 32px; }
 .close-top .invite { grid-column: 1 / 8; display: grid; gap: 32px; justify-items: start; }
 .close-top h2 { font-size: var(--step-head); }
 .credits { display: grid; grid-template-columns: repeat(12, 1fr); column-gap: 20px; row-gap: 8px; font-size: var(--step-small); color: color-mix(in srgb, var(--bg) 78%, var(--ink)); padding-block: clamp(16px, 2vw, 28px) clamp(24px, 3vw, 40px); }
 .credits span:first-child { grid-column: 1 / 6; }
 .credits span:last-child { grid-column: 7 / 13; }
 /* Sized so the four letters span the frame, with the credit line beneath. */
-.close .name { font-family: var(--display); font-size: 61vw; line-height: 0.8; letter-spacing: -0.03em; white-space: nowrap; margin: clamp(56px, 7vw, 96px) 0 0 -0.02em; padding-top: 0.06em; }
+.close .name { font-family: var(--display); font-size: 61vw; line-height: 0.8; letter-spacing: -0.03em; white-space: nowrap; margin: clamp(56px, 7vw, 96px) 0 0 -0.02em; padding-top: 0.06em; 
+               /* At this size the text box reaches far above the letters and would cover the button. */
+               pointer-events: none; user-select: none; }
 
 /* ---------- Phone and tablet ---------- */
 @media (max-width: 1100px) {
