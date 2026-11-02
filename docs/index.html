@@ -72,18 +72,21 @@ code { font-family: var(--ui); font-size: 0.86em; font-weight: 600; letter-spaci
 }
 
 /* ---------- Hero ---------- */
-.hero { min-height: 100svh; display: grid; grid-template-rows: auto 1fr auto; padding-block: 22px 48px; }
+.hero { min-height: 100svh; display: grid; grid-template-rows: auto 1fr; padding-block: 22px 24px; }
+/* The hero already ends in space, so the first section needs less above it. */
+#messages { padding-top: clamp(64px, 7vw, 104px); }
+.hero-body { align-self: center; display: grid; gap: clamp(32px, 3.4vw, 48px); padding-block: 48px; }
 .nav { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; font-size: var(--step-body); }
 .wordmark { font-family: var(--display); font-size: var(--step-lead); letter-spacing: 0.02em; text-decoration: none; }
 .wordmark span { font-family: var(--text); font-size: var(--step-small); letter-spacing: 0; color: var(--muted); margin-left: 0.5em; text-transform: none; }
 .nav ul { list-style: none; margin: 0; padding: 0; display: flex; gap: clamp(14px, 2.4vw, 32px); }
 .nav a { text-decoration: none; }
-.sentence { align-self: center; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 0.1em 0.16em; font-size: var(--step-display); line-height: 0.8; letter-spacing: -0.02em; white-space: nowrap; }
+.sentence { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 0.1em 0.16em; font-size: var(--step-display); line-height: 0.8; letter-spacing: -0.02em; white-space: nowrap; }
 .sentence .word { display: block; padding-top: 0.06em; }
 .sentence .word.last { grid-column: 1 / -1; }
 .strip { min-width: 0; height: 0.74em; border-radius: 14px; overflow: hidden; background: var(--ink); color: var(--bg); position: relative; }
-.hero-foot { display: grid; justify-items: center; gap: 28px; text-align: center; }
-.hero-foot p { max-width: 46ch; font-size: var(--step-lead); line-height: 1.35; }
+.hero-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 24px 48px; }
+.hero-foot p { max-width: 50ch; font-size: var(--step-lead); line-height: 1.35; }
 
 /* The strip is a live fragment: a real traced number from the dataset, cycling. */
 [data-ui].strip .slide { position: absolute; inset: 0; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 0 clamp(14px, 2vw, 32px);
@@ -194,8 +197,8 @@ section { padding-block: var(--gap-section) 0; }
 /* The yellow field: the validator, demonstrated. */
 .field { background: var(--accent); color: var(--accent-ink); margin-top: var(--gap-section); padding-block: clamp(80px, 9vw, 128px); }
 .field + section { padding-top: clamp(96px, 10vw, 144px); }
-.field-grid { margin-top: 96px; display: grid; grid-template-columns: repeat(12, 1fr); column-gap: 20px; align-items: end; }
-.field-grid .given { grid-column: 1 / 5; display: grid; gap: 14px; align-self: end; }
+.field-grid { margin-top: 64px; display: grid; grid-template-columns: repeat(12, 1fr); column-gap: 20px; align-items: start; }
+.field-grid .given { grid-column: 1 / 5; display: grid; gap: 20px; }
 .field-grid .given p { font-size: var(--step-body); max-width: 34ch; }
 .breaks { grid-column: 6 / 13; width: 100%; border-collapse: collapse; }
 .breaks th, .breaks td { text-align: left; vertical-align: top; padding: 13px 16px 13px 0; font-weight: 400; }
@@ -204,7 +207,7 @@ section { padding-block: var(--gap-section) 0; }
 .breaks td.draft { width: 38%; font-style: italic; }
 .breaks td.verdict code { font-size: 0.82em; background: rgba(13, 42, 28, .08); padding: 2px 6px; border-radius: 4px; }
 .breaks tbody tr:nth-child(4n + 1):not(:first-child) > * { padding-top: 40px; }
-.field-close { margin-top: 56px; font-size: var(--step-lead); max-width: 40ch; }
+.field-close { margin-top: 48px; font-size: var(--step-lead); max-width: 40ch; }
 
 /* Replies: the headline is the owner's reply. */
 .reply-grid { margin-top: 48px; display: grid; grid-template-columns: repeat(12, 1fr); column-gap: 20px; row-gap: 32px; align-items: start; }
@@ -230,14 +233,17 @@ section { padding-block: var(--gap-section) 0; }
 .bar-notes code { font-weight: 600; }
 
 /* Footer: the close, over the cropped name. */
-.close { margin-top: var(--gap-section); background: var(--ink); color: var(--bg); overflow: hidden; display: grid; grid-template-rows: auto clamp(96px, 12vw, 180px) auto auto; padding-top: clamp(64px, 9vw, 120px); }
+.close { margin-top: var(--gap-section); background: var(--ink); color: var(--bg); overflow: hidden; display: grid; grid-template-rows: auto auto auto; row-gap: clamp(56px, 7vw, 96px); padding-top: clamp(72px, 9vw, 120px); }
 .close-top { display: grid; grid-template-columns: repeat(12, 1fr); column-gap: 20px; row-gap: 32px; }
 .close-top .invite { grid-column: 1 / 8; display: grid; gap: 32px; justify-items: start; }
 .close-top h2 { font-size: var(--step-head); }
 .close-top ul { grid-column: 10 / 13; list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; align-content: start; }
 .close-top ul a { text-decoration: none; }
-.credits { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px 24px; font-size: var(--step-small); opacity: .75; padding-bottom: 10px; }
-.close .name { font-family: var(--display); font-size: 34vw; line-height: 0.8; letter-spacing: -0.02em; white-space: nowrap; transform: translateY(24%); margin: 0 0 0 -0.04em; }
+.credits { display: grid; grid-template-columns: repeat(12, 1fr); column-gap: 20px; row-gap: 8px; font-size: var(--step-small); color: color-mix(in srgb, var(--bg) 78%, var(--ink)); margin-bottom: -2vw; }
+.credits span:first-child { grid-column: 1 / 6; }
+.credits span:last-child { grid-column: 7 / 13; }
+/* Sized so the four letters span the frame; the bottom quarter is cut by the edge. */
+.close .name { font-family: var(--display); font-size: 61vw; line-height: 0.74; letter-spacing: -0.03em; white-space: nowrap; margin: 0 0 -0.2em -0.02em; }
 
 /* ---------- Phone and tablet ---------- */
 @media (max-width: 1100px) {
@@ -251,7 +257,6 @@ section { padding-block: var(--gap-section) 0; }
   .strip { height: auto; aspect-ratio: 2 / 1; font-size: 16px; }
   [data-ui].strip .slide { grid-template-columns: 1fr; align-content: center; gap: 6px; }
   [data-ui].strip .num { font-size: 64px; }
-  .hero-foot { justify-items: start; text-align: left; }
   .section-head h2, .section-head p, .rows-head h2, .row .lead-in, .row .copy, .row .proof,
   .field-grid .given, .breaks, .reply-grid .answer, .reply-grid .listens, .close-top .invite, .close-top ul { grid-column: 1 / -1; }
   .row { row-gap: 18px; }
@@ -269,7 +274,7 @@ section { padding-block: var(--gap-section) 0; }
   [data-ui].bar .seg { min-width: 0; min-height: 72px; flex: var(--lines) 1 0; transform-origin: center top; }
   .bar-notes { display: none; }
   .examples button { min-height: 44px; }
-  .close .name { font-size: 46vw; }
+  .credits span:first-child, .credits span:last-child { grid-column: 1 / -1; }
 }
 
 /* ---------- Motion ---------- */
@@ -283,8 +288,8 @@ section { padding-block: var(--gap-section) 0; }
   .js .hero .word { animation: line-in 900ms var(--ease-expo) both; animation-delay: calc(100ms + var(--i) * 90ms); }
   .js .hero .strip { animation: shutter 1100ms var(--ease-in-out) 250ms both; }
   .js .hero-foot > * { animation: rise 600ms var(--ease-out) both; animation-delay: calc(500ms + var(--i) * 80ms); }
-  .js [data-ui].strip .slide.enter { animation: slide-in 700ms var(--ease-expo) both; }
-  .js [data-ui].strip .slide.leave { animation: slide-out 500ms var(--ease-in-out) both; }
+  .js [data-ui].strip .slide.enter { animation: slide-in 650ms var(--ease-in-out) both; }
+  .js [data-ui].strip .slide.leave { animation: slide-out 650ms var(--ease-in-out) both; }
   .js [data-reveal] { opacity: 0; transform: translateY(24px); transition: opacity 700ms var(--ease-out), transform 900ms var(--ease-out); transition-delay: calc(var(--i, 0) * 80ms); }
   .js [data-reveal].is-in { opacity: 1; transform: none; }
   .js [data-ui].bar .seg { transform: scaleX(0.04); transition: transform 1100ms var(--ease-expo); transition-delay: calc(var(--i) * 90ms); }
@@ -310,6 +315,7 @@ section { padding-block: var(--gap-section) 0; }
     </ul>
   </nav>
 
+  <div class="hero-body">
   <h1 class="sentence">
     <span class="word" style="--i:0">Every</span>
     <span class="visually-hidden">number</span>
@@ -320,6 +326,7 @@ section { padding-block: var(--gap-section) 0; }
   <div class="hero-foot">
     <p style="--i:0">Vera writes WhatsApp messages for Indian shop owners: dentists, salons, gyms, chemists and restaurants. If it can't trace a number to the shop's own data, the message doesn't go out.</p>
     <a class="button" href="#messages" style="--i:1">Search the 100 messages</a>
+  </div>
   </div>
 </header>
 
@@ -419,7 +426,6 @@ section { padding-block: var(--gap-section) 0; }
       <li><a class="link" href="https://github.com/D-Dynamico/VeraAI/blob/main/tools/showcase.py">How this page is built</a></li>
     </ul>
   </div>
-  <div></div>
   <div class="credits">
     <span>Built by Dayanand for the magicpin AI Challenge</span>
     <span>All shops and figures are synthetic challenge data. Messages are the no-LLM path, reproducible with <code>tools/showcase.py</code>.</span>
@@ -477,7 +483,7 @@ if (!reduceMotion && stripItems.length > 1) {
     strip.insertAdjacentHTML("beforeend", stripSlide(stripItems[stripIndex]));
     strip.lastElementChild.classList.add("enter");
     old.classList.add("leave");
-    setTimeout(() => old.remove(), 520);
+    setTimeout(() => old.remove(), 680);
   }, 3000);
 }
 
