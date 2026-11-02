@@ -1,5 +1,9 @@
 # Vera — merchant engagement bot
 
+**Live demo: https://d-dynamico.github.io/VeraAI/**
+
+The demo lets you browse all 100 generated messages. Click any number in a message to see the exact data field it came from. It also shows a message updating when the shop's numbers change, and how the bot handles auto-replies, a "yes", a hostile reply and an off-topic question. It is a static page built by `tools/showcase.py` from the real composer, with no server or LLM involved.
+
 A stateful HTTP server (`vera/app.py`) exposing the five judged endpoints, plus the
 offline artifacts: `compose()` in `bot.py` and the 30-line `submission.jsonl`. Both
 run the same composer, so a message produced offline is the message the server sends.
