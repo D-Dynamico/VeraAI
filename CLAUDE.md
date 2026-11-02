@@ -2,13 +2,20 @@
 
 Context file for any session working in this repo. Everything below was derived by reading the briefs, the dataset, and `judge_simulator.py` end-to-end. Read this first; it saves a full re-derivation pass.
 
+> **Status (2026-11-02): the challenge has expired. This is now a personal project, and its current purpose is a portfolio piece for recruiters.**
+>
+> - **What still holds:** the architecture (§7), the no-fabrication rule (§3.2, §8.3), the plain-language rules (§9), the code conventions (§12) and the git workflow (§13). The bot should still never invent a number. That rule is now the main thing the demo is selling.
+> - **What is history:** the judged window and everything built to survive it. That covers the tunnel-only deployment, the ~105-minute stay-awake requirement, single-instance paranoia, the 15s/5s simulator budgets and `launch-checklist.md`. §2, §4 and §6 record why those decisions were made then. **Don't treat them as constraints now.** Scale-to-zero hosting and adding endpoints are fine.
+> - **Writing to the grader is over.** The keyword lists in §4 and §8.3b are now only test fixtures. Where they make a reply read worse to a person, a person now wins.
+> - **Current work is §16: the recruiter showcase.**
+
 ---
 
 ## 1. What this repo is
 
 A challenge submission workspace. The task: **build a merchant-engagement AI bot ("Vera") that talks to Indian local-commerce merchants on WhatsApp**, composed from four context layers, and is scored by an LLM judge harness.
 
-Phases 1-5 and 7 are built; §10 tracks what is left. The table below is the **provided** material only — everything written for the submission lives in `vera/`, `tools/`, `bot.py` and `make_submission.py`, and is described in §7.
+Phases 1-5 and 7 were built for the challenge; §16 tracks the current portfolio work. The table below is the **provided** material only — everything written for the submission lives in `vera/`, `tools/`, `bot.py` and `make_submission.py`, and is described in §7.
 
 ### Files present (all provided by the challenge, none written by us)
 
@@ -123,7 +130,9 @@ customer: customer_id, merchant_id, identity{name, phone_redacted, language_pref
 
 ---
 
-## 6. Decisions already made (do not re-litigate without the user)
+## 6. Decisions made for the challenge window (historical — see the status note at the top)
+
+The deployment reasoning below was right for a single judged window and is kept as a record. It does not bind the personal project. A public live demo would sensibly go on a free tier (Render or Vercel, no card needed), and scale-to-zero would be acceptable.
 
 - **LLM for composition: Gemini free tier** (Google AI Studio key, `GEMINI_API_KEY`).
 - **Deployment: cloudflared quick tunnel to a local uvicorn process.** `challenge-testing-brief.md` §6 lists a tunnel alongside the clouds as an accepted deployment, so this is within the rules, not a workaround. Whatever serves the bot must be **single instance, single worker, no autoscaling, no scale-to-zero**, because context state is in-memory and a restart mid-test fails warmup (3 consecutive healthz failures = disqualification for that slot).
@@ -414,6 +423,10 @@ cloudflared tunnel --url http://127.0.0.1:8123 --no-autoupdate
 # if one fails; it uses Gemini when GEMINI_API_KEY is set and templates when it is not.
 PYTHONIOENCODING=utf-8 python make_submission.py
 
+# Recruiter showcase -> docs/index.html, served by GitHub Pages (self-contained, no server, no LLM).
+# Exits non-zero if any number in any body cannot be traced to a source field.
+PYTHONIOENCODING=utf-8 python tools/showcase.py
+
 # Rehearse the judge's scoring (reads BOT_URL / LLM_API_KEY / TEST_SCENARIO from the
 # environment — the file was patched so no key is ever pasted into a tracked file)
 python judge_simulator.py
@@ -427,6 +440,24 @@ Environment: Windows 11, Python 3.12.10, Docker Desktop (needs starting; it does
 
 ## 15. Working agreements
 
-- Do not commit or deploy without being asked.
+- Do not commit or deploy without being asked. (Publishing the private showcase artifact is fine; sharing it is the owner's call.)
 - No real merchant outreach; all data here is synthetic. Do not scrape magicpin or Google.
 - Case-study bodies in `examples/case-studies.md` are a **north star, not a copy source** — the judge runs a similarity check and penalizes near-duplicates.
+
+---
+
+## 16. Recruiter showcase (current work)
+
+**Audience:** recruiters and hiring managers. They will open a link and spend about two minutes on it, and they will never run the server. So the demo is a **static page**, not a hosted bot: it never goes dead, costs nothing, and exposes no API key.
+
+- **`tools/showcase.py`** runs the real composer at build time over all 100 expanded triggers: fact pack, cohort, templates, validator and the reply state machine. It bakes the results into `tools/showcase_template.html` as JSON and writes `docs/index.html`.
+- **The page shows:**
+  - Every message as a phone bubble, with a "receipt" for each number giving the source path it came from. This is the no-fabrication story made visible.
+  - The version-delta demo: Dr. Meera's calls going from 18 to 27 between two versions of her data.
+  - The four reply scenarios: auto-reply, commitment, hostile, off-topic.
+  - The triggers held back, and the pipeline.
+- **The tracer** (`_trace`) matches each number in a body against the input JSON. It checks the trigger payload first, then the digest item, then the merchant, the customer and the offer catalog. Exact values beat numbers quoted inside text, and identifiers come last. If nothing matches, it falls back to computed sources: cohort medians, the calls-per-100-views rate, percentages stored as fractions, and months since the last visit. **The build exits non-zero if any number goes untraced or any check fails.** Treat that as a regression in the composer, not in the page.
+- **It is templates only**, by design: deterministic and reproducible by anyone without a key. The footer says so.
+- **Published on GitHub Pages** at https://d-dynamico.github.io/VeraAI/, served from `main` → `/docs` (`docs/.nojekyll` skips Jekyll processing). To update it, rebuild, commit `docs/index.html` and push. There is also an older private claude.ai artifact copy (slug `2849b35e-6f5e-43ad-878f-62bef098959d`); the Pages URL is the canonical one.
+
+Possible next steps, none started: a hosted `/v1/compose` endpoint with rate limiting for typed-in input, a README section and screenshot pointing at the showcase, and a Gemini-vs-template toggle.
