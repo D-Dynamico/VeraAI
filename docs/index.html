@@ -233,17 +233,17 @@ section { padding-block: var(--gap-section) 0; }
 .bar-notes code { font-weight: 600; }
 
 /* Footer: the close, over the cropped name. */
-.close { margin-top: var(--gap-section); background: var(--ink); color: var(--bg); overflow: hidden; display: grid; grid-template-rows: auto auto auto; row-gap: clamp(56px, 7vw, 96px); padding-top: clamp(72px, 9vw, 120px); }
+.close { margin-top: var(--gap-section); background: var(--ink); color: var(--bg); overflow: hidden; display: grid; grid-template-rows: auto auto auto; row-gap: 0; padding-top: clamp(72px, 9vw, 120px); }
 .close-top { display: grid; grid-template-columns: repeat(12, 1fr); column-gap: 20px; row-gap: 32px; }
 .close-top .invite { grid-column: 1 / 8; display: grid; gap: 32px; justify-items: start; }
 .close-top h2 { font-size: var(--step-head); }
 .close-top ul { grid-column: 10 / 13; list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; align-content: start; }
 .close-top ul a { text-decoration: none; }
-.credits { display: grid; grid-template-columns: repeat(12, 1fr); column-gap: 20px; row-gap: 8px; font-size: var(--step-small); color: color-mix(in srgb, var(--bg) 78%, var(--ink)); margin-bottom: -2vw; }
+.credits { display: grid; grid-template-columns: repeat(12, 1fr); column-gap: 20px; row-gap: 8px; font-size: var(--step-small); color: color-mix(in srgb, var(--bg) 78%, var(--ink)); padding-block: clamp(16px, 2vw, 28px) clamp(24px, 3vw, 40px); }
 .credits span:first-child { grid-column: 1 / 6; }
 .credits span:last-child { grid-column: 7 / 13; }
-/* Sized so the four letters span the frame; the bottom quarter is cut by the edge. */
-.close .name { font-family: var(--display); font-size: 61vw; line-height: 0.74; letter-spacing: -0.03em; white-space: nowrap; margin: 0 0 -0.2em -0.02em; }
+/* Sized so the four letters span the frame, with the credit line beneath. */
+.close .name { font-family: var(--display); font-size: 61vw; line-height: 0.8; letter-spacing: -0.03em; white-space: nowrap; margin: clamp(56px, 7vw, 96px) 0 0 -0.02em; padding-top: 0.06em; }
 
 /* ---------- Phone and tablet ---------- */
 @media (max-width: 1100px) {
@@ -426,11 +426,11 @@ section { padding-block: var(--gap-section) 0; }
       <li><a class="link" href="https://github.com/D-Dynamico/VeraAI/blob/main/tools/showcase.py">How this page is built</a></li>
     </ul>
   </div>
+  <p class="name" aria-hidden="true">VERA</p>
   <div class="credits">
     <span>Built by Dayanand for the magicpin AI Challenge</span>
     <span>All shops and figures are synthetic challenge data. Messages are the no-LLM path, reproducible with <code>tools/showcase.py</code>.</span>
   </div>
-  <p class="name" aria-hidden="true">VERA</p>
 </footer>
 
 <script>
