@@ -237,8 +237,6 @@ section { padding-block: var(--gap-section) 0; }
 .close-top { display: grid; grid-template-columns: repeat(12, 1fr); column-gap: 20px; row-gap: 32px; }
 .close-top .invite { grid-column: 1 / 8; display: grid; gap: 32px; justify-items: start; }
 .close-top h2 { font-size: var(--step-head); }
-.close-top ul { grid-column: 10 / 13; list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; align-content: start; }
-.close-top ul a { text-decoration: none; }
 .credits { display: grid; grid-template-columns: repeat(12, 1fr); column-gap: 20px; row-gap: 8px; font-size: var(--step-small); color: color-mix(in srgb, var(--bg) 78%, var(--ink)); padding-block: clamp(16px, 2vw, 28px) clamp(24px, 3vw, 40px); }
 .credits span:first-child { grid-column: 1 / 6; }
 .credits span:last-child { grid-column: 7 / 13; }
@@ -258,7 +256,7 @@ section { padding-block: var(--gap-section) 0; }
   [data-ui].strip .slide { grid-template-columns: 1fr; align-content: center; gap: 6px; }
   [data-ui].strip .num { font-size: 64px; }
   .section-head h2, .section-head p, .rows-head h2, .row .lead-in, .row .copy, .row .proof,
-  .field-grid .given, .breaks, .reply-grid .answer, .reply-grid .listens, .close-top .invite, .close-top ul { grid-column: 1 / -1; }
+  .field-grid .given, .breaks, .reply-grid .answer, .reply-grid .listens, .close-top .invite { grid-column: 1 / -1; }
   .row { row-gap: 18px; }
   .row:nth-child(even) .proof { justify-self: start; }
   .row .proof { max-width: 100% !important; }
@@ -311,7 +309,7 @@ section { padding-block: var(--gap-section) 0; }
     <ul>
       <li><a class="link" href="#messages">Messages</a></li>
       <li><a class="link" href="#replies">Replies</a></li>
-      <li><a class="link" href="https://github.com/D-Dynamico/VeraAI">Code</a></li>
+      <li><a class="link" href="https://github.com/D-Dynamico/VeraAI" target="_blank" rel="noopener">Code</a></li>
     </ul>
   </nav>
 
@@ -418,13 +416,8 @@ section { padding-block: var(--gap-section) 0; }
   <div class="close-top">
     <div class="invite">
       <h2>Read how it's built</h2>
-      <a class="button yellow" href="https://github.com/D-Dynamico/VeraAI">Open the repository</a>
+      <a class="button yellow" href="https://github.com/D-Dynamico/VeraAI" target="_blank" rel="noopener">Open the repository</a>
     </div>
-    <ul>
-      <li><a class="link" href="https://github.com/D-Dynamico/VeraAI#readme">README and tradeoffs</a></li>
-      <li><a class="link" href="https://github.com/D-Dynamico/VeraAI/tree/main/vera">The composer, vera/</a></li>
-      <li><a class="link" href="https://github.com/D-Dynamico/VeraAI/blob/main/tools/showcase.py">How this page is built</a></li>
-    </ul>
   </div>
   <p class="name" aria-hidden="true">VERA</p>
   <div class="credits">
