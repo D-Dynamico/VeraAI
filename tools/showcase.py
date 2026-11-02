@@ -23,7 +23,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.stdout.reconfigure(encoding="utf-8")  # bodies carry the rupee sign
 
 from vera.cohort import Cohort, build_cohort
-from vera.conversation import ConversationStore, respond
+from vera.conversation import (
+    AUTO_REPLY_MARKERS,
+    COMMITMENT_MARKERS,
+    OFF_TOPIC_MARKERS,
+    OPT_OUT_MARKERS,
+    ConversationStore,
+    respond,
+)
 from vera.factpack import build_fact_pack, numbers_in
 from vera.templates import compose_from_template
 from vera.validate import check
@@ -167,44 +174,82 @@ def _compose_case(trigger, merchant, category, customer, all_merchants, previous
     return base
 
 
-def _conversations(open_topic: str) -> list[dict]:
-    """The three replay scenarios, run through the real reply state machine."""
-    scenarios = [
-        (
-            "auto-reply",
-            "The owner's WhatsApp Business auto-reply answers instead of the owner.",
-            ["Thank you for contacting Dr. Meera's Dental Clinic! Our team will respond shortly."] * 3,
-        ),
-        (
-            "commitment",
-            "The owner says yes. Vera stops pitching and starts doing.",
-            ["Yes please, let's do it"],
-        ),
-        (
-            "hostile",
-            "The owner wants no more messages.",
-            ["Stop messaging me. This is spam."],
-        ),
-        (
-            "off-topic",
-            "The owner asks for something Vera can't help with.",
-            ["Can you help me file my GST return?"],
-        ),
-    ]
+# One owner reply per class the reply path recognises. The page classifies what a
+# visitor types with the same marker lists, then shows the move respond() made
+# for that class. The auto-reply is sent twice: the second copy is what ends it.
+REPLY_EXAMPLES = (
+    ("auto_reply", "Thank you for contacting us! Our team will respond shortly.", 2),
+    ("commitment", "Yes please, go ahead", 1),
+    ("opt_out", "Stop messaging me, this is spam", 1),
+    ("off_topic", "Can you help me file my GST return?", 1),
+    ("question", "How many patients saw my last post?", 1),
+    ("acknowledgement", "Hmm, I'll think about it", 1),
+)
+
+
+def _replies(open_topic: str) -> dict:
+    """Each reply class run through the real state machine, plus the markers that pick the class."""
     store = ConversationStore()
-    out = []
-    for index, (name, blurb, replies) in enumerate(scenarios):
-        merchant_id = f"demo_{index}"
-        state = store.conversation(f"conv_{name}", merchant_id, None)
-        memory = store.partner(merchant_id, None)
+    outcomes = {}
+    for name, example, repeats in REPLY_EXAMPLES:
+        state = store.conversation(f"conv_{name}", f"demo_{name}", None)
+        memory = store.partner(f"demo_{name}", None)
         turns = []
-        for reply in replies:
-            if state.ended:
-                break
-            move = respond(state, memory, reply, open_topic=open_topic)
-            turns.append({"merchant": reply, **move})
-        out.append({"name": name, "blurb": blurb, "turns": turns})
-    return out
+        for _ in range(repeats):
+            turns.append({"merchant": example, **respond(state, memory, example, open_topic=open_topic)})
+        outcomes[name] = {"example": example, "turns": turns}
+    return {
+        "outcomes": outcomes,
+        "markers": {
+            "auto_reply": list(AUTO_REPLY_MARKERS),
+            "opt_out": list(OPT_OUT_MARKERS),
+            "off_topic": list(OFF_TOPIC_MARKERS),
+            "commitment": list(COMMITMENT_MARKERS),
+        },
+    }
+
+
+# Each break is applied to a real composed body and the validator's own verdict is
+# recorded. Nothing on the page claims a rule the build did not just watch fire.
+BREAKS = (
+    ("A number nobody gave it", "2100 patients", "2400 patients"),
+    ("A link", "Source: JIDA Oct 2026, p.14.", "Source: JIDA Oct 2026, p.14. Read it at jida.org."),
+    ("Business jargon", "No effect in low-risk patients.", "No effect in low-risk patients. It could lift your CTR."),
+    ("A claim the trade forbids", "No effect in low-risk patients.", "No effect in low-risk patients. Results are guaranteed."),
+    ("Bank-SMS English", "Want me to pull", "Kindly confirm if you want me to pull"),
+    ("Markdown WhatsApp can't show", "3-month fluoride varnish recall outperforms", "**3-month fluoride varnish recall** outperforms"),
+    ("A second ask", "2100 patients.", "2100 patients. Want me to call you about it?"),
+    ("Hindi to an English-only owner", "No effect in low-risk patients.", "No effect in low-risk patients. Aapke liye kya karein."),
+)
+
+
+def _validator_demo(merchant, trigger, category, all_merchants) -> list[dict]:
+    pack = build_fact_pack(category, merchant, trigger, today=TODAY)
+    peers = [other for other in all_merchants if other["merchant_id"] != merchant["merchant_id"]]
+    body = compose_from_template(pack, build_cohort(merchant, peers)).body
+    rows = []
+    for label, old, new in BREAKS:
+        if old not in body:
+            raise SystemExit(f"validator demo: {old!r} is no longer in the demo body; update BREAKS")
+        snippet = new.strip()
+        rows.append({"rule": label, "draft": snippet, "verdict": check(body.replace(old, new, 1), pack, category)})
+    return rows
+
+
+def _module_sizes() -> list[dict]:
+    """Non-blank lines per pipeline module, for the bar whose widths show where the code goes."""
+    stages = (
+        ("factpack.py", "Pulls facts from the shop's data and tags each with its source."),
+        ("cohort.py", "Compares the shop with every peer in the dataset."),
+        ("templates.py", "Writes the plain-English draft that ships if the model fails."),
+        ("compose.py", "Lets Gemini reword approved lines inside an 8-second budget."),
+        ("validate.py", "Blocks any draft that breaks a rule, from either path."),
+    )
+    sizes = []
+    for module, job in stages:
+        lines = (REPO / "vera" / module).read_text(encoding="utf-8").splitlines()
+        sizes.append({"module": module, "lines": sum(1 for line in lines if line.strip()), "job": job})
+    return sizes
 
 
 def main() -> int:
@@ -248,7 +293,9 @@ def main() -> int:
             "before": before,
             "after": after,
         },
-        "conversations": _conversations("the 3 Google posts on fluoride varnish"),
+        "replies": _replies("the 3 Google posts on fluoride varnish"),
+        "breaks": _validator_demo(merchant, trigger, category, all_merchants),
+        "modules": _module_sizes(),
         "stats": {
             "triggers": len(cases),
             "composed": len(composed),

@@ -19,3 +19,6 @@ venv/
 
 # runtime logs and the perishable tunnel URL from tools/serve.ps1
 logs/
+
+# design tooling output
+.taste-skill/

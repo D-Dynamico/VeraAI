@@ -4,405 +4,569 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Vera Merchant Messaging Demo</title>
+<meta name="description" content="Vera writes WhatsApp messages for Indian shop owners, and every number in them traces to the shop's own data.">
+<script>document.documentElement.classList.add("js");</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
 <style>
-/* Layout idea: a lab notebook beside a phone. Left, the cases; middle, the message
-   as the merchant sees it; right, the receipt for every number in it. */
+/* The sentence is the layout: each section is a short statement with its proof
+   beside it. The proof is always the product's own output, built in HTML. */
 :root {
-  --paper: #f4f5f2;
-  --surface: #ffffff;
-  --ink: #17231f;
-  --muted: #5c6a64;
-  --line: #d9ded8;
-  --accent: #0e6b52;
-  --accent-soft: #dcefe7;
-  --trace: #f3c04a;
-  --trace-soft: #fbedc6;
-  --chat: #e7e1d6;
-  --bubble: #d8f6cf;
-  --bubble-in: #ffffff;
-  --bad: #a3322a;
-  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
-  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
-  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  --bg: #f7f7f7;
+  --surface: #ebebeb;
+  --ink: #0d2a1c;
+  --ink-mid: #2f5a45;
+  --muted: #5f6b64;
+  --accent: #f6e016;
+  --accent-ink: #0d2a1c;
+  --paper: #ffffff;
+
+  --display: "Bebas Neue", "Arial Narrow", Impact, sans-serif;
+  --text: "EB Garamond", Garamond, Georgia, serif;
+  /* The phone and the receipts are product fragments: they use the phone's own face. */
+  --ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  --step-small: clamp(0.8125rem, 0.79rem + 0.1vw, 0.875rem);
+  --step-body: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem);
+  --step-lead: clamp(1.25rem, 1.1rem + 0.7vw, 1.625rem);
+  --step-head: clamp(2.75rem, 1.2rem + 5.4vw, 6rem);
+  --step-display: clamp(4.5rem, 1rem + 13vw, 13rem);
+
+  --margin: clamp(16px, 3vw, 40px);
+  --gap-section: clamp(120px, 14vw, 200px);
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.76, 0, 0.24, 1);
+  --t-press: 140ms;
+  --t-hover: 180ms;
+  --t-ui: 240ms;
+
   color-scheme: light;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --paper: #111815; --surface: #18211d; --ink: #e6ece8; --muted: #9aa8a1; --line: #2c3833;
-    --accent: #5cc9a4; --accent-soft: #1d3a30; --trace: #e8b53c; --trace-soft: #4a3c17;
-    --chat: #0f1613; --bubble: #1f4a36; --bubble-in: #232d29; --bad: #f08a80;
-    color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --paper: #111815; --surface: #18211d; --ink: #e6ece8; --muted: #9aa8a1; --line: #2c3833;
-  --accent: #5cc9a4; --accent-soft: #1d3a30; --trace: #e8b53c; --trace-soft: #4a3c17;
-  --chat: #0f1613; --bubble: #1f4a36; --bubble-in: #232d29; --bad: #f08a80;
-  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; }
-body { background: var(--paper); color: var(--ink); font: 15px/1.55 var(--body); }
-a { color: var(--accent); }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.wrap { max-width: 1280px; margin: 0 auto; padding: 0 24px; }
-h1, h2 { font-family: var(--display); text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
-h1 { font-size: clamp(30px, 4vw, 44px); line-height: 1.1; }
-h2 { font-size: 24px; line-height: 1.2; }
-h3 { margin: 0 0 8px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+body { background: var(--bg); color: var(--ink); font: var(--step-body)/1.5 var(--text); }
+a { color: inherit; }
 p { margin: 0; }
-.lede { max-width: 66ch; color: var(--muted); font-size: 16px; }
+h1, h2, h3 { margin: 0; font-family: var(--display); font-weight: 400; text-transform: uppercase; letter-spacing: -0.01em; line-height: 0.9; text-wrap: balance; }
+h2 { font-size: var(--step-head); }
+h3 { font-size: var(--step-lead); line-height: 1; letter-spacing: 0; }
+code { font-family: var(--ui); font-size: 0.86em; font-weight: 600; letter-spacing: 0.01em; }
+:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+::selection { background: var(--accent); color: var(--accent-ink); }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.mono { font-family: var(--mono); font-size: 12.5px; }
+.frame { padding-inline: var(--margin); }
+.link { text-decoration: underline; text-decoration-thickness: 0.07em; text-underline-offset: 0.2em; text-decoration-color: color-mix(in srgb, currentColor 40%, transparent); transition: text-decoration-color var(--t-hover) ease; }
+.button { display: inline-flex; align-items: center; gap: 0.6em; padding: 0.85em 1.4em; border-radius: 999px; background: var(--ink); color: var(--bg);
+          font: 500 var(--step-body)/1 var(--text); text-decoration: none; border: 0; cursor: pointer;
+          transition: transform var(--t-press) var(--ease-out), background-color var(--t-hover) ease; }
+.button:active { transform: scale(0.97); }
+.button.yellow { background: var(--accent); color: var(--accent-ink); }
+@media (hover: hover) and (pointer: fine) {
+  .link:hover { text-decoration-color: currentColor; }
+  .button:hover { background: var(--ink-mid); }
+  .button.yellow:hover { background: var(--paper); }
+}
 
-header { padding: 40px 0 28px; border-bottom: 1px solid var(--line); }
-.header-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 32px; align-items: end; }
-.byline { margin-top: 14px; font-size: 13.5px; color: var(--muted); }
-.stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
-.stat b { display: block; font-family: var(--display); font-size: 26px; line-height: 1.1; font-variant-numeric: tabular-nums; }
-.stat span { font-size: 12.5px; color: var(--muted); }
+/* ---------- Hero ---------- */
+.hero { min-height: 100svh; display: grid; grid-template-rows: auto 1fr auto; padding-block: 22px 48px; }
+.nav { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; font-size: var(--step-body); }
+.wordmark { font-family: var(--display); font-size: var(--step-lead); letter-spacing: 0.02em; text-decoration: none; }
+.wordmark span { font-family: var(--text); font-size: var(--step-small); letter-spacing: 0; color: var(--muted); margin-left: 0.5em; text-transform: none; }
+.nav ul { list-style: none; margin: 0; padding: 0; display: flex; gap: clamp(14px, 2.4vw, 32px); }
+.nav a { text-decoration: none; }
+.sentence { align-self: center; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 0.1em 0.16em; font-size: var(--step-display); line-height: 0.8; letter-spacing: -0.02em; white-space: nowrap; }
+.sentence .word { display: block; padding-top: 0.06em; }
+.sentence .word.last { grid-column: 1 / -1; }
+.strip { min-width: 0; height: 0.74em; border-radius: 14px; overflow: hidden; background: var(--ink); color: var(--bg); position: relative; }
+.hero-foot { display: grid; justify-items: center; gap: 28px; text-align: center; }
+.hero-foot p { max-width: 46ch; font-size: var(--step-lead); line-height: 1.35; }
 
-section { padding: 40px 0; border-bottom: 1px solid var(--line); }
-.section-head { display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px; }
+/* The strip is a live fragment: a real traced number from the dataset, cycling. */
+[data-ui].strip .slide { position: absolute; inset: 0; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 0 clamp(14px, 2vw, 32px);
+                         padding: 0 clamp(16px, 2.4vw, 36px); font: 400 16px/1.35 var(--ui); letter-spacing: 0; white-space: normal; text-transform: none; }
+[data-ui].strip .num { font-family: var(--display); font-size: clamp(44px, 6.2vw, 104px); line-height: 1; color: var(--accent); padding-top: 0.08em; }
+[data-ui].strip .src { display: grid; gap: 4px; min-width: 0; }
+[data-ui].strip code { color: var(--accent); font-size: clamp(13px, 1.25vw, 19px); overflow-wrap: anywhere; }
+[data-ui].strip .quote { font-size: clamp(14px, 1.5vw, 23px); max-width: 52ch; opacity: .85; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+[data-ui].strip .shop { font-size: clamp(12px, 1vw, 15px); opacity: .65; }
 
-/* Explorer */
-.explorer { display: grid; grid-template-columns: 290px minmax(320px, 400px) 1fr; gap: 20px; align-items: start; }
-.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
-.list-panel { display: flex; flex-direction: column; max-height: 760px; }
-.filters { padding: 12px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--line); }
-.chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.chip { font: inherit; font-size: 12.5px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line);
-        background: transparent; color: var(--ink); cursor: pointer; }
-.chip:hover { border-color: var(--muted); }
-.chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
-#search { font: inherit; font-size: 13px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line);
-          background: var(--paper); color: var(--ink); width: 100%; }
-.case-list { list-style: none; margin: 0; padding: 6px; overflow-y: auto; }
-.case-list button { width: 100%; text-align: left; font: inherit; background: none; border: 0; color: var(--ink);
-                    padding: 8px 10px; border-radius: 8px; cursor: pointer; display: grid; gap: 1px; }
-.case-list button:hover { background: var(--paper); }
-.case-list button[aria-current="true"] { background: var(--accent-soft); }
-.case-list .kind { font-size: 13.5px; font-weight: 500; }
-.case-list .who { font-size: 12px; color: var(--muted); }
-.case-list .held { color: var(--bad); }
-.count { font-size: 12px; color: var(--muted); padding: 0 12px 10px; }
+/* ---------- Sections ---------- */
+section { padding-block: var(--gap-section) 0; }
+.section-head { display: grid; grid-template-columns: repeat(12, 1fr); column-gap: 20px; row-gap: 20px; align-items: end; }
+.section-head h2 { grid-column: 1 / 8; }
+.section-head p { grid-column: 8 / 13; max-width: 44ch; justify-self: end; }
 
-.phone { background: var(--chat); border-radius: 22px; border: 1px solid var(--line); overflow: hidden; }
-.phone-top { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--surface); border-bottom: 1px solid var(--line); }
-.avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: var(--paper);
-          display: grid; place-items: center; font-weight: 600; font-size: 14px; flex: none; }
-.phone-top .name { font-weight: 600; font-size: 14px; line-height: 1.2; }
-.phone-top .sub { font-size: 12px; color: var(--muted); }
-.notif { margin: 14px 14px 0; background: var(--surface); border-radius: 12px; padding: 9px 12px; font-size: 13px;
-         box-shadow: 0 1px 2px rgba(0,0,0,.08); }
-.notif small { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
-.thread { padding: 14px; display: flex; flex-direction: column; gap: 8px; min-height: 300px; }
-.bubble { max-width: 92%; padding: 8px 11px 6px; border-radius: 10px; font-size: 14.5px; line-height: 1.45;
-          box-shadow: 0 1px 1px rgba(0,0,0,.12); overflow-wrap: anywhere; }
-.bubble.out { align-self: flex-end; background: var(--bubble); border-top-right-radius: 3px; }
-.bubble.in { align-self: flex-start; background: var(--bubble-in); border-top-left-radius: 3px; }
-.bubble p + p { margin-top: 8px; }
-.bubble mark { background: var(--trace-soft); color: inherit; border-radius: 3px; padding: 0 2px;
-               box-shadow: inset 0 -2px 0 var(--trace); cursor: pointer; }
-.bubble mark.lit { background: var(--trace); color: #1b1404; }
-.bubble mark.changed { background: var(--accent-soft); box-shadow: inset 0 -2px 0 var(--accent); }
-.held-note { align-self: center; max-width: 90%; text-align: center; font-size: 13px; color: var(--muted);
-             background: var(--surface); border-radius: 8px; padding: 10px 12px; }
-.event { align-self: center; font-size: 12px; color: var(--muted); background: var(--surface); border-radius: 999px; padding: 3px 12px; }
-.event.end { color: var(--bad); }
+/* Search: the headline is an input. */
+.type-line { margin-top: 48px; display: flex; align-items: center; gap: 0.06em; position: relative; }
+[data-ui].type-line input { flex: 0 1 auto; min-width: 1ch; max-width: calc(100% - 0.3em); font: 400 var(--step-head)/1 var(--display); letter-spacing: -0.01em; text-transform: uppercase; color: var(--ink);
+                            background: transparent; border: 0; padding: 0; caret-color: var(--ink); }
+[data-ui].type-line input::placeholder { color: var(--muted); opacity: .5; }
+[data-ui].type-line input:focus-visible { outline: none; }
+[data-ui].type-line input { -webkit-appearance: none; appearance: none; }
+[data-ui].type-line input::-webkit-search-cancel-button, [data-ui].type-line input::-webkit-search-decoration { -webkit-appearance: none; appearance: none; display: none; }
+[data-ui].type-line:focus-within .caret { visibility: hidden; }
+.type-line .measure { position: absolute; visibility: hidden; white-space: pre; font: 400 var(--step-head)/1 var(--display); letter-spacing: -0.01em; text-transform: uppercase; }
+[data-ui].type-line { border-bottom: 4px solid var(--ink); padding-bottom: 8px; }
+.examples { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 6px 22px; align-items: baseline; }
+.examples span { color: var(--muted); }
+.examples button { font: inherit; color: var(--ink); background: none; border: 0; padding: 4px 0; cursor: pointer;
+                   text-decoration: underline; text-decoration-thickness: 0.07em; text-underline-offset: 0.22em; text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+                   transition: text-decoration-color var(--t-hover) ease, transform var(--t-press) var(--ease-out); }
+.examples button:active { transform: scale(0.96); }
+@media (hover: hover) and (pointer: fine) { .examples button:hover { text-decoration-color: currentColor; } }
 
-.detail { padding: 18px; display: flex; flex-direction: column; gap: 20px; }
-.detail-head { display: flex; flex-wrap: wrap; gap: 6px; }
-.tag { font-size: 11.5px; padding: 2px 9px; border-radius: 999px; background: var(--paper); border: 1px solid var(--line); color: var(--muted); }
-.tag.strong { background: var(--accent-soft); border-color: transparent; color: var(--accent); font-weight: 600; }
-.receipts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
-.receipts li { display: grid; grid-template-columns: 64px 1fr; gap: 12px; padding: 8px 10px; border-radius: 8px;
-               border: 1px solid transparent; cursor: default; }
-.receipts li.lit { border-color: var(--trace); background: var(--trace-soft); }
-.receipts .n { font-family: var(--display); font-weight: 700; font-size: 18px; font-variant-numeric: tabular-nums; }
-.receipts .path { font-family: var(--mono); font-size: 12px; color: var(--accent); overflow-wrap: anywhere; }
-.receipts .val { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
-.how { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; padding: 1px 6px; border-radius: 4px;
-       background: var(--paper); color: var(--muted); margin-left: 6px; font-family: var(--body); }
-.empty { font-size: 13px; color: var(--muted); }
-.kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; font-size: 13px; margin: 0; }
-.kv dt { color: var(--muted); }
-.kv dd { margin: 0; overflow-wrap: anywhere; }
-.checks-ok { color: var(--accent); font-size: 13.5px; font-weight: 500; }
-.checks-bad { color: var(--bad); font-size: 13.5px; }
-.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.explorer { margin-top: 48px; display: grid; grid-template-columns: minmax(240px, 300px) minmax(300px, 400px) 1fr; gap: 20px; align-items: start; }
 
-/* Delta */
-.delta { display: grid; grid-template-columns: 1fr auto 1fr; gap: 20px; align-items: start; }
-.delta-arrow { align-self: center; text-align: center; font-size: 13px; color: var(--muted); max-width: 160px; }
-.delta-arrow b { display: block; font-family: var(--display); font-size: 22px; color: var(--ink); font-variant-numeric: tabular-nums; }
-.phone.flat { border-radius: 14px; }
-.phone.flat .thread { min-height: 0; }
-.phone-label { font-size: 12px; color: var(--muted); padding: 8px 14px 0; }
+/* Explorer fragments: the product's own interface, with its own conventions. */
+[data-ui] { font-family: var(--ui); }
+[data-ui].results { background: var(--paper); border-radius: 14px; max-height: 640px; display: flex; flex-direction: column; overflow: hidden; }
+[data-ui].results .count { font-size: 13px; color: var(--muted); padding: 14px 16px 6px; }
+[data-ui].results ul { list-style: none; margin: 0; padding: 4px 8px 8px; overflow-y: auto; }
+[data-ui].results button { width: 100%; text-align: left; font: inherit; color: var(--ink); background: none; border: 0; border-radius: 8px; padding: 9px 10px; cursor: pointer;
+                           display: grid; gap: 2px; transition: background-color var(--t-hover) ease; }
+[data-ui].results button[aria-current="true"] { background: var(--accent); }
+[data-ui].results button[aria-current="true"] .who { color: var(--ink); }
+@media (hover: hover) and (pointer: fine) { [data-ui].results button:hover:not([aria-current="true"]) { background: var(--surface); } }
+[data-ui].results .kind { font-size: 14px; font-weight: 600; text-transform: capitalize; }
+[data-ui].results .who { font-size: 13px; color: var(--muted); }
+[data-ui].results .held { color: #8a2a1e; font-weight: 500; }
+[data-ui].results .none { padding: 12px 10px; font-size: 14px; color: var(--muted); }
 
-/* Conversations */
-.convos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-.convo { display: flex; flex-direction: column; }
-.convo .phone { border-radius: 14px; flex: 1; }
-.convo .thread { min-height: 0; }
-.convo h4 { margin: 0 0 4px; font-family: var(--display); font-size: 17px; }
-.convo .blurb { font-size: 13px; color: var(--muted); margin-bottom: 10px; min-height: 40px; }
-.why { font-size: 12px; color: var(--muted); align-self: stretch; border-left: 2px solid var(--line); padding-left: 8px; }
+[data-ui].phone { background: #e3e7e2; border-radius: 22px; overflow: hidden; }
+[data-ui] .phone-top { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--ink); color: #fff; }
+[data-ui] .avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: var(--ink); display: grid; place-items: center; font-weight: 700; font-size: 14px; flex: none; }
+[data-ui] .phone-top .name { font-weight: 600; font-size: 14px; line-height: 1.25; }
+[data-ui] .phone-top .sub { font-size: 12px; opacity: .7; }
+[data-ui] .notif { margin: 14px 14px 0; background: #fff; border-radius: 12px; padding: 9px 12px; font-size: 13px; line-height: 1.4; }
+[data-ui] .notif small { display: block; font-size: 11px; color: var(--muted); margin-bottom: 2px; }
+[data-ui] .thread { padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+[data-ui] .bubble { max-width: 92%; padding: 8px 11px; border-radius: 10px; font-size: 14.5px; line-height: 1.45; color: #111b16; overflow-wrap: anywhere; box-shadow: 0 1px 0.5px rgba(0,0,0,.13); }
+[data-ui] .bubble.out { align-self: flex-end; background: #dcf3d2; border-top-right-radius: 3px; }
+[data-ui] .bubble.in { align-self: flex-start; background: #fff; border-top-left-radius: 3px; }
+[data-ui] .bubble p + p { margin-top: 8px; }
+[data-ui] .bubble mark { background: color-mix(in srgb, var(--accent) 55%, transparent); color: inherit; border-radius: 3px; padding: 0 2px; cursor: pointer; transition: background-color var(--t-hover) ease; }
+[data-ui] .bubble mark.lit { background: var(--accent); box-shadow: 0 0 0 2px var(--ink); }
+[data-ui] .event { align-self: center; font-size: 12.5px; background: #fff; color: var(--muted); border-radius: 999px; padding: 4px 12px; }
+[data-ui] .event.end { background: var(--ink); color: #fff; }
+[data-ui] .held-note { align-self: center; text-align: center; font-size: 14px; line-height: 1.45; background: #fff; border-radius: 10px; padding: 12px 14px; max-width: 92%; color: #111b16; }
 
-/* Quiet + pipeline */
-.quiet { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
-.quiet li { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--bad); border-radius: 8px; padding: 12px 14px; }
-.quiet b { font-weight: 600; }
-.pipeline { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; counter-reset: step; }
-.pipeline li { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; counter-increment: step; }
-.pipeline li::before { content: counter(step); display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
-                       background: var(--accent); color: var(--paper); font-size: 12px; font-weight: 600; margin-bottom: 8px; }
-.pipeline b { display: block; font-family: var(--mono); font-size: 13px; margin-bottom: 4px; }
-.pipeline span { font-size: 13px; color: var(--muted); }
-footer { padding: 28px 0 48px; font-size: 13px; color: var(--muted); }
+[data-ui].receipts { background: var(--paper); border-radius: 14px; padding: 20px; display: grid; gap: 22px; color: var(--ink); }
+[data-ui].receipts .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+[data-ui].receipts .tag { font-size: 12.5px; padding: 3px 10px; border-radius: 999px; background: var(--surface); }
+[data-ui].receipts .tag.strong { background: var(--ink); color: #fff; text-transform: capitalize; }
+[data-ui].receipts h4 { margin: 0 0 8px; font-size: 14px; font-weight: 600; }
+[data-ui].receipts ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+[data-ui].receipts li { display: grid; grid-template-columns: 72px 1fr; gap: 12px; padding: 8px 10px; border-radius: 8px; transition: background-color var(--t-hover) ease; }
+[data-ui].receipts li.lit { background: var(--accent); }
+[data-ui].receipts .n { font-family: var(--display); font-size: 26px; line-height: 1; padding-top: 2px; font-variant-numeric: tabular-nums; }
+[data-ui].receipts code { font-size: 12.5px; color: var(--ink-mid); overflow-wrap: anywhere; }
+[data-ui].receipts .computed { font-size: 11.5px; margin-left: 6px; padding: 1px 6px; border-radius: 4px; background: var(--surface); color: var(--muted); }
+[data-ui].receipts .val { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+[data-ui].receipts p { font-size: 14px; line-height: 1.5; }
+[data-ui].receipts dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 0; font-size: 13px; }
+[data-ui].receipts dt { color: var(--muted); }
+[data-ui].receipts dd { margin: 0; overflow-wrap: anywhere; }
+[data-ui].receipts .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+[data-ui].receipts .ok { font-size: 14px; color: var(--ink-mid); font-weight: 600; }
+[data-ui].receipts .bad { font-size: 14px; color: #8a2a1e; }
 
+/* Rows with margin fragments, hanging from an axis at about 35%. */
+.rows-head { display: grid; grid-template-columns: repeat(12, 1fr); column-gap: 20px; }
+.rows-head h2 { grid-column: 5 / 13; }
+.rows { list-style: none; margin: 96px 0 0; padding: 0; display: grid; gap: clamp(72px, 9vw, 120px); }
+.row { display: grid; grid-template-columns: repeat(12, 1fr); column-gap: 20px; align-items: start; }
+.row .lead-in { grid-column: 1 / 5; font-family: var(--display); font-size: var(--step-head); line-height: 0.85; color: var(--ink-mid); }
+.row .copy { grid-column: 5 / 9; display: grid; gap: 14px; }
+.row .copy p { max-width: 36ch; }
+.row .proof { grid-column: 9 / 13; justify-self: end; width: 100%; }
+.row:nth-child(1) .proof { max-width: 400px; }
+.row:nth-child(2) .proof { max-width: 340px; }
+.row:nth-child(3) .proof { max-width: 380px; }
+.row:nth-child(4) .proof { max-width: 320px; }
+[data-ui].mini { background: #e3e7e2; border-radius: 16px; }
+[data-ui].mini .bubble mark { cursor: default; }
+[data-ui].mini .bubble mark.changed { background: var(--accent); }
+
+/* The yellow field: the validator, demonstrated. */
+.field { background: var(--accent); color: var(--accent-ink); margin-top: var(--gap-section); padding-block: clamp(80px, 9vw, 128px); }
+.field + section { padding-top: clamp(96px, 10vw, 144px); }
+.field-grid { margin-top: 96px; display: grid; grid-template-columns: repeat(12, 1fr); column-gap: 20px; align-items: end; }
+.field-grid .given { grid-column: 1 / 5; display: grid; gap: 14px; align-self: end; }
+.field-grid .given p { font-size: var(--step-body); max-width: 34ch; }
+.breaks { grid-column: 6 / 13; width: 100%; border-collapse: collapse; }
+.breaks th, .breaks td { text-align: left; vertical-align: top; padding: 13px 16px 13px 0; font-weight: 400; }
+.breaks thead th { font-size: var(--step-small); color: var(--ink-mid); padding-bottom: 6px; }
+.breaks tbody th { font-weight: 500; width: 30%; }
+.breaks td.draft { width: 38%; font-style: italic; }
+.breaks td.verdict code { font-size: 0.82em; background: rgba(13, 42, 28, .08); padding: 2px 6px; border-radius: 4px; }
+.breaks tbody tr:nth-child(4n + 1):not(:first-child) > * { padding-top: 40px; }
+.field-close { margin-top: 56px; font-size: var(--step-lead); max-width: 40ch; }
+
+/* Replies: the headline is the owner's reply. */
+.reply-grid { margin-top: 48px; display: grid; grid-template-columns: repeat(12, 1fr); column-gap: 20px; row-gap: 32px; align-items: start; }
+.reply-grid .answer { grid-column: 1 / 7; max-width: 560px; display: grid; gap: 14px; }
+.reply-grid .listens { grid-column: 8 / 13; display: grid; gap: 12px; }
+.reply-grid .listens p { max-width: 44ch; }
+.verdict-line { font-size: var(--step-lead); }
+.verdict-line b { font-weight: 500; background: var(--accent); padding: 0 0.25em; }
+[data-ui].convo { background: #e3e7e2; border-radius: 16px; }
+[data-ui].convo .why { font-size: 13px; color: var(--muted); border-left: 2px solid rgba(13,42,28,.2); padding-left: 8px; }
+.marker-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.marker-list li { font-size: var(--step-small); padding: 4px 10px; border-radius: 999px; background: var(--surface); transition: background-color var(--t-ui) ease; }
+.marker-list li.hit { background: var(--accent); font-weight: 500; }
+
+/* Where the code goes: one bar, widths from real line counts. */
+.bar-wrap { margin-top: 64px; }
+[data-ui].bar { display: flex; gap: 6px; height: 22vh; min-height: 150px; }
+[data-ui].bar .seg { flex: var(--lines) 1 0; min-width: 12%; border-radius: 10px; padding: 18px 20px; display: flex; flex-direction: column; justify-content: space-between;
+                     font-family: var(--display); font-size: clamp(22px, 2.2vw, 34px); line-height: 1; transform-origin: left center; }
+[data-ui].bar .seg small { font-family: var(--ui); font-size: 13px; opacity: .8; }
+.bar-notes { display: flex; gap: 6px; margin-top: 16px; }
+.bar-notes p { flex: var(--lines) 1 0; min-width: 12%; font-size: var(--step-small); line-height: 1.45; padding-right: 10px; }
+.bar-notes code { font-weight: 600; }
+
+/* Footer: the close, over the cropped name. */
+.close { margin-top: var(--gap-section); background: var(--ink); color: var(--bg); overflow: hidden; display: grid; grid-template-rows: auto clamp(96px, 12vw, 180px) auto auto; padding-top: clamp(64px, 9vw, 120px); }
+.close-top { display: grid; grid-template-columns: repeat(12, 1fr); column-gap: 20px; row-gap: 32px; }
+.close-top .invite { grid-column: 1 / 8; display: grid; gap: 32px; justify-items: start; }
+.close-top h2 { font-size: var(--step-head); }
+.close-top ul { grid-column: 10 / 13; list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; align-content: start; }
+.close-top ul a { text-decoration: none; }
+.credits { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px 24px; font-size: var(--step-small); opacity: .75; padding-bottom: 10px; }
+.close .name { font-family: var(--display); font-size: 34vw; line-height: 0.8; letter-spacing: -0.02em; white-space: nowrap; transform: translateY(24%); margin: 0 0 0 -0.04em; }
+
+/* ---------- Phone and tablet ---------- */
 @media (max-width: 1100px) {
-  .explorer { grid-template-columns: 260px 1fr; }
-  .detail-panel { grid-column: 1 / -1; }
-  .convos { grid-template-columns: repeat(2, 1fr); }
+  .explorer { grid-template-columns: minmax(220px, 280px) 1fr; }
+  .explorer [data-ui].receipts { grid-column: 1 / -1; }
 }
 @media (max-width: 760px) {
-  .wrap { padding: 0 16px; }
-  .header-grid, .explorer, .two-col, .delta, .convos { grid-template-columns: 1fr; }
-  .list-panel { max-height: 360px; }
-  .delta-arrow { max-width: none; }
+  .nav ul li:not(:last-child) { display: none; }
+  .sentence { grid-template-columns: 1fr; gap: 14px; font-size: 21vw; white-space: normal; }
+  .sentence .word.last { font-size: 0.82em; }
+  .strip { height: auto; aspect-ratio: 2 / 1; font-size: 16px; }
+  [data-ui].strip .slide { grid-template-columns: 1fr; align-content: center; gap: 6px; }
+  [data-ui].strip .num { font-size: 64px; }
+  .hero-foot { justify-items: start; text-align: left; }
+  .section-head h2, .section-head p, .rows-head h2, .row .lead-in, .row .copy, .row .proof,
+  .field-grid .given, .breaks, .reply-grid .answer, .reply-grid .listens, .close-top .invite, .close-top ul { grid-column: 1 / -1; }
+  .row { row-gap: 18px; }
+  .row:nth-child(even) .proof { justify-self: start; }
+  .row .proof { max-width: 100% !important; }
+  .row:nth-child(2) .proof { width: 82%; }
+  .row:nth-child(3) .proof { width: 90%; }
+  .explorer { grid-template-columns: 1fr; }
+  [data-ui].results { max-height: 300px; }
+  .field-grid { row-gap: 40px; }
+  .breaks thead { display: none; }
+  .breaks tr { display: grid; gap: 4px; padding-block: 16px; }
+  .breaks th, .breaks td { padding: 0 !important; width: auto !important; }
+  [data-ui].bar { flex-direction: column; height: 70svh; }
+  [data-ui].bar .seg { min-width: 0; min-height: 72px; flex: var(--lines) 1 0; transform-origin: center top; }
+  .bar-notes { display: none; }
+  .examples button { min-height: 44px; }
+  .close .name { font-size: 46vw; }
 }
+
+/* ---------- Motion ---------- */
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } }
+@keyframes shutter { from { clip-path: inset(0 100% 0 0 round 14px); } to { clip-path: inset(0 0 0 0 round 14px); } }
+@keyframes line-in { from { transform: translateY(40%); opacity: 0; } }
+@keyframes slide-in { from { transform: translateY(100%); } }
+@keyframes slide-out { to { transform: translateY(-100%); } }
+@keyframes blink { 50% { opacity: 0; } }
 @media (prefers-reduced-motion: no-preference) {
-  .case-list button, .chip, .receipts li, .bubble mark { transition: background-color .15s, border-color .15s; }
+  .js .hero .word { animation: line-in 900ms var(--ease-expo) both; animation-delay: calc(100ms + var(--i) * 90ms); }
+  .js .hero .strip { animation: shutter 1100ms var(--ease-in-out) 250ms both; }
+  .js .hero-foot > * { animation: rise 600ms var(--ease-out) both; animation-delay: calc(500ms + var(--i) * 80ms); }
+  .js [data-ui].strip .slide.enter { animation: slide-in 700ms var(--ease-expo) both; }
+  .js [data-ui].strip .slide.leave { animation: slide-out 500ms var(--ease-in-out) both; }
+  .js [data-reveal] { opacity: 0; transform: translateY(24px); transition: opacity 700ms var(--ease-out), transform 900ms var(--ease-out); transition-delay: calc(var(--i, 0) * 80ms); }
+  .js [data-reveal].is-in { opacity: 1; transform: none; }
+  .js [data-ui].bar .seg { transform: scaleX(0.04); transition: transform 1100ms var(--ease-expo); transition-delay: calc(var(--i) * 90ms); }
+  .js [data-ui].bar.is-in .seg { transform: none; }
+  .js [data-ui] .thread.swap > * { animation: rise 420ms var(--ease-out) both; animation-delay: calc(var(--i, 0) * 70ms); }
+  .caret { animation: blink 1.1s steps(1) infinite; }
+}
+.caret { display: inline-block; width: 0.08em; height: 0.72em; background: var(--ink); align-self: center; flex: none; }
+@media (max-width: 760px) and (prefers-reduced-motion: no-preference) {
+  .js [data-ui].bar .seg { transform: scaleY(0.04); }
 }
 </style>
 </head>
 <body>
-<header>
-  <div class="wrap header-grid">
-    <div>
-      <h1>Vera writes WhatsApp messages to shop owners, and can't make up a number</h1>
-      <p class="lede" style="margin-top:14px">A messaging bot for Indian local businesses: dentists, salons, restaurants, gyms and chemists. Python decides what is true and worth saying; an LLM only polishes the wording. Every number in a message has to trace back to the shop's own data, or the message doesn't go out.</p>
-      <p class="byline">Built by Dayanand for the magicpin AI Challenge &middot; <a href="https://github.com/D-Dynamico/VeraAI">Source on GitHub</a></p>
-    </div>
-    <div class="stats" id="stats"></div>
+
+<header class="hero frame">
+  <nav class="nav" aria-label="Main">
+    <a class="wordmark" href="#top" id="top">Vera<span>by Dayanand</span></a>
+    <ul>
+      <li><a class="link" href="#messages">Messages</a></li>
+      <li><a class="link" href="#replies">Replies</a></li>
+      <li><a class="link" href="https://github.com/D-Dynamico/VeraAI">Code</a></li>
+    </ul>
+  </nav>
+
+  <h1 class="sentence">
+    <span class="word" style="--i:0">Every</span>
+    <span class="visually-hidden">number</span>
+    <span class="strip" data-ui aria-hidden="true" id="strip"></span>
+    <span class="word last" style="--i:1">has a source</span>
+  </h1>
+
+  <div class="hero-foot">
+    <p style="--i:0">Vera writes WhatsApp messages for Indian shop owners: dentists, salons, gyms, chemists and restaurants. If it can't trace a number to the shop's own data, the message doesn't go out.</p>
+    <a class="button" href="#messages" style="--i:1">Search the 100 messages</a>
   </div>
 </header>
 
 <main>
-  <section>
-    <div class="wrap">
-      <div class="section-head">
-        <h2>Every message, with a receipt for every number</h2>
-        <p class="lede">Pick a case. The highlighted numbers in the message are each matched to the exact field they came from. Click a number to find its source.</p>
+  <section id="messages" class="frame">
+    <div class="section-head">
+      <h2 data-reveal>Every message, checked</h2>
+      <p data-reveal style="--i:1" id="stats-line"></p>
+    </div>
+
+    <label class="visually-hidden" for="search">Search the messages</label>
+    <div class="type-line" data-ui>
+      <input id="search" type="search" value="fluoride" autocomplete="off" spellcheck="false" placeholder="Type a shop or a word">
+      <span class="caret" aria-hidden="true"></span>
+    </div>
+    <div class="examples"><span>Try</span>
+      <button type="button" data-q="salon">salon</button>
+      <button type="button" data-q="refill">refill</button>
+      <button type="button" data-q="customer">to customers</button>
+      <button type="button" data-q="IPL">IPL</button>
+      <button type="button" data-q="held back">held back</button>
+    </div>
+
+    <div class="explorer">
+      <div class="results" data-ui><p class="count" id="count"></p><ul id="case-list"></ul></div>
+      <div class="phone" data-ui id="phone" aria-live="polite"></div>
+      <div class="receipts" data-ui id="detail"></div>
+    </div>
+  </section>
+
+  <section id="right" class="frame">
+    <div class="rows-head"><h2 data-reveal>Four things it gets right</h2></div>
+    <ol class="rows" id="rows"></ol>
+  </section>
+
+  <section class="field frame" id="checks">
+    <h2 data-reveal>Eight ways a draft fails</h2>
+    <div class="field-grid">
+      <div class="given" data-reveal>
+        <p>Each line on the right is this real message, broken on purpose. The verdict is what <code>validate.py</code> returned when the page was built.</p>
+        <div class="mini" data-ui id="given"></div>
       </div>
-      <div class="explorer">
-        <div class="panel list-panel">
-          <div class="filters">
-            <div class="chips" id="category-chips" role="group" aria-label="Filter by business type"></div>
-            <div class="chips" id="audience-chips" role="group" aria-label="Filter by recipient"></div>
-            <label for="search" class="visually-hidden">Search cases</label>
-            <input id="search" type="search" placeholder="Search messages, shops, triggers">
-          </div>
-          <p class="count" id="count"></p>
-          <ul class="case-list" id="case-list"></ul>
-        </div>
-        <div class="phone" id="phone"></div>
-        <div class="panel detail-panel"><div class="detail" id="detail"></div></div>
+      <table class="breaks" data-reveal style="--i:1">
+        <caption class="visually-hidden">Validator verdicts for eight deliberate breaks</caption>
+        <thead><tr><th scope="col">The break</th><th scope="col">What the draft said</th><th scope="col">What the validator said</th></tr></thead>
+        <tbody id="breaks"></tbody>
+      </table>
+    </div>
+    <p class="field-close" data-reveal id="field-close"></p>
+  </section>
+
+  <section id="replies" class="frame">
+    <div class="section-head">
+      <h2 data-reveal>Type the owner's reply</h2>
+      <p data-reveal style="--i:1">Replies don't go to a language model. A small set of rules decides whether to answer, wait or stop, so the bot never argues with an auto-reply or keeps pitching after a no.</p>
+    </div>
+    <label class="visually-hidden" for="reply">The owner's reply</label>
+    <div class="type-line" data-ui>
+      <input id="reply" type="text" value="Yes please, go ahead" autocomplete="off" spellcheck="false" placeholder="Type a reply">
+      <span class="caret" aria-hidden="true"></span>
+    </div>
+    <div class="examples" id="reply-examples"><span>Try</span></div>
+    <div class="reply-grid">
+      <div class="answer">
+        <p class="verdict-line" id="verdict"></p>
+        <div class="convo" data-ui><div class="thread" id="reply-thread" aria-live="polite"></div></div>
+      </div>
+      <div class="listens">
+        <h3>What it listens for</h3>
+        <p id="listens-copy"></p>
+        <ul class="marker-list" id="markers"></ul>
       </div>
     </div>
   </section>
 
-  <section>
-    <div class="wrap">
-      <div class="section-head">
-        <h2>It notices what changed</h2>
-        <p class="lede">The server keeps the previous version of every context it receives. When a newer snapshot of a shop arrives, the next message names the change instead of repeating itself.</p>
-      </div>
-      <div class="delta" id="delta"></div>
+  <section id="code" class="frame">
+    <div class="section-head">
+      <h2 data-reveal>Where the code goes</h2>
+      <p data-reveal style="--i:1" id="code-copy"></p>
     </div>
-  </section>
-
-  <section>
-    <div class="wrap">
-      <div class="section-head">
-        <h2>It knows when to stop talking</h2>
-        <p class="lede">Replies go through a small state machine, not an LLM. Each thread below is the real output for that reply, along with the reason the bot gives.</p>
-      </div>
-      <div class="convos" id="convos"></div>
-    </div>
-  </section>
-
-  <section>
-    <div class="wrap two-col">
-      <div>
-        <div class="section-head">
-          <h2>Sometimes the right message is none</h2>
-          <p class="lede">When the data doesn't support a message, or the customer hasn't agreed to that kind of contact, Vera sends nothing instead of inventing a reason to write.</p>
-        </div>
-        <ul class="quiet" id="quiet"></ul>
-      </div>
-      <div>
-        <div class="section-head">
-          <h2>How a message is made</h2>
-          <p class="lede">The usual approach is reversed: code decides what to say, and the model only decides how it reads.</p>
-        </div>
-        <ol class="pipeline">
-          <li><b>factpack.py</b><span>Pulls facts out of the shop's data, each tagged with the field it came from.</span></li>
-          <li><b>cohort.py</b><span>Compares the shop with every peer in the dataset, so "other clinics get 23 calls" is computed, not guessed.</span></li>
-          <li><b>templates.py</b><span>Writes a plain-English draft: the key fact first, one line of context, one simple ask.</span></li>
-          <li><b>compose.py</b><span>Gemini rephrases the approved lines within an 8-second budget. If it's slow or wrong, the draft ships.</span></li>
-          <li><b>validate.py</b><span>Blocks unknown numbers, links, jargon, banned words, repeat messages and second asks.</span></li>
-        </ol>
-      </div>
+    <div class="bar-wrap">
+      <div class="bar" data-ui id="bar" role="img"></div>
+      <div class="bar-notes" id="bar-notes"></div>
     </div>
   </section>
 </main>
 
-<footer>
-  <div class="wrap">All shops, customers and figures are synthetic data from the challenge dataset. Messages on this page are the deterministic draft path, generated by <span class="mono">tools/showcase.py</span> with no LLM, so anyone can reproduce them exactly.</div>
+<footer class="close frame">
+  <div class="close-top">
+    <div class="invite">
+      <h2>Read how it's built</h2>
+      <a class="button yellow" href="https://github.com/D-Dynamico/VeraAI">Open the repository</a>
+    </div>
+    <ul>
+      <li><a class="link" href="https://github.com/D-Dynamico/VeraAI#readme">README and tradeoffs</a></li>
+      <li><a class="link" href="https://github.com/D-Dynamico/VeraAI/tree/main/vera">The composer, vera/</a></li>
+      <li><a class="link" href="https://github.com/D-Dynamico/VeraAI/blob/main/tools/showcase.py">How this page is built</a></li>
+    </ul>
+  </div>
+  <div></div>
+  <div class="credits">
+    <span>Built by Dayanand for the magicpin AI Challenge</span>
+    <span>All shops and figures are synthetic challenge data. Messages are the no-LLM path, reproducible with <code>tools/showcase.py</code>.</span>
+  </div>
+  <p class="name" aria-hidden="true">VERA</p>
 </footer>
 
 <script>
 const DATA = /*__DATA__*/null;
 const NUMBER = /\d(?:[\d,]*\d)?(?:\.\d+)?/g;
-const KIND_LABEL = kind => kind.replace(/_/g, " ");
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const kindLabel = kind => kind.replace(/_/g, " ");
 const esc = text => String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const byId = id => DATA.cases.find(c => c.id === id);
+const capital = text => text.charAt(0).toUpperCase() + text.slice(1);
 
-// mark: which numbers to highlight. Only the explorer has receipts for every number.
+// mark decides which numbers are highlighted; only the explorer has a receipt for every one.
 function richText(body, mark = () => true, markClass = () => "") {
   // Escape first: the escaped text carries no digits of its own, so the number
-  // pass below only ever touches digits that were in the message.
+  // pass below only touches digits that were in the message.
   return body.split(/\n\n+/).map(block => {
     let html = esc(block).replace(NUMBER, match => {
       const value = match.replace(/,/g, "");
       if (!mark(value)) return match;
-      return `<mark data-n="${value}" class="${markClass(value)}" tabindex="0">${match}</mark>`;
+      return `<mark data-n="${value}" class="${markClass(value)}">${match}</mark>`;
     });
     html = html.replace(/\*([^*\n]+)\*/g, "<strong>$1</strong>").replace(/(^|\W)_([^_\n]+)_(?=\W|$)/g, "$1<em>$2</em>");
     return `<p>${html.replace(/\n/g, "<br>")}</p>`;
   }).join("");
 }
+const preview = body => { const flat = body.replace(/\s+/g, " ").trim(); return flat.length > 90 ? flat.slice(0, 90).trimEnd() + "…" : flat; };
 
-function preview(body) {
-  const flat = body.replace(/\s+/g, " ").trim();
-  return flat.length > 90 ? flat.slice(0, 90).trimEnd() + "…" : flat;
+/* ---------- Hero strip: real traced numbers, two per business type ---------- */
+const stripItems = [];
+for (const category of ["dentists", "salons", "restaurants", "gyms", "pharmacies"]) {
+  for (const c of DATA.cases.filter(item => item.category === category && item.numbers)) {
+    const n = c.numbers.find(number => number.value.length >= 2 && number.sources[0].how === "read" && !/\.id$|_id$/.test(number.sources[0].path));
+    if (n && stripItems.filter(item => item.category === category).length < 2) stripItems.push({ category, shop: c.merchant, ...n });
+  }
+}
+const strip = document.getElementById("strip");
+let stripIndex = 0;
+function stripSlide(item) {
+  const source = item.sources[0];
+  const quote = source.value.length > 110 ? source.value.slice(0, 110).trimEnd() + "…" : source.value;
+  return `<div class="slide"><span class="num">${esc(item.value)}</span>
+    <span class="src"><code>${esc(source.path)}</code><span class="quote">“${esc(quote)}”</span><span class="shop">${esc(item.shop)}</span></span></div>`;
+}
+strip.innerHTML = stripSlide(stripItems[0]);
+if (!reduceMotion && stripItems.length > 1) {
+  setInterval(() => {
+    if (document.hidden) return;
+    const old = strip.querySelector(".slide:last-child");
+    stripIndex = (stripIndex + 1) % stripItems.length;
+    strip.insertAdjacentHTML("beforeend", stripSlide(stripItems[stripIndex]));
+    strip.lastElementChild.classList.add("enter");
+    old.classList.add("leave");
+    setTimeout(() => old.remove(), 520);
+  }, 3000);
 }
 
-/* Stats */
+/* ---------- Explorer ---------- */
 const s = DATA.stats;
-document.getElementById("stats").innerHTML = [
-  [`${s.traced}/${s.numbers}`, "numbers traced to a source"],
-  [s.composed, `messages written for ${s.triggers} triggers`],
-  [s.distinct, "different messages, no copy-paste"],
-  [s.failing, "messages failing a check"],
-].map(([big, small]) => `<div class="stat"><b>${big}</b><span>${small}</span></div>`).join("");
+document.getElementById("stats-line").textContent =
+  `${s.composed} messages for ${s.triggers} triggers across ${s.merchants} shops. All ${s.traced} numbers in them trace to a field in the shop's data, and ${s.failing === 0 ? "none fails" : s.failing + " fail"} a check. Search, then click a highlighted number to see where it came from.`;
 
-/* Explorer */
-const state = { category: null, audience: null, term: "", current: null };
-const categories = [...new Set(DATA.cases.map(c => c.category))].sort();
-
-function chipRow(id, key, options) {
-  const root = document.getElementById(id);
-  root.innerHTML = [["all", null], ...options].map(([label, value]) =>
-    `<button class="chip" data-value="${value ?? ""}" aria-pressed="${value === null}">${label}</button>`).join("");
-  root.addEventListener("click", event => {
-    const button = event.target.closest("button");
-    if (!button) return;
-    state[key] = button.dataset.value || null;
-    root.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b === button)));
-    renderList();
-  });
-}
-chipRow("category-chips", "category", categories.map(c => [c, c]));
-chipRow("audience-chips", "audience", [["to owners", "merchant"], ["to customers", "customer"]]);
-document.getElementById("search").addEventListener("input", event => { state.term = event.target.value.trim().toLowerCase(); renderList(); });
+const search = document.getElementById("search");
+const state = { current: null };
+const haystack = c => `${c.id} ${c.kind} ${kindLabel(c.kind)} ${c.category} ${c.merchant} ${c.where} ${c.audience === "customer" ? "customer customers" : "owner"} ${c.blocked ? "held back" : ""} ${c.body || ""}`.toLowerCase();
 
 function visibleCases() {
-  return DATA.cases.filter(c =>
-    (!state.category || c.category === state.category) &&
-    (!state.audience || c.audience === state.audience) &&
-    (!state.term || `${c.id} ${c.kind} ${c.merchant} ${c.body || ""}`.toLowerCase().includes(state.term)));
+  const term = search.value.trim().toLowerCase();
+  return term ? DATA.cases.filter(c => haystack(c).includes(term)) : DATA.cases;
+}
+
+function markCurrent() {
+  document.querySelectorAll("#case-list button").forEach(b => b.setAttribute("aria-current", String(b.dataset.id === state.current)));
 }
 
 function renderList() {
   const cases = visibleCases();
-  document.getElementById("count").textContent = `${cases.length} of ${DATA.cases.length} cases`;
-  document.getElementById("case-list").innerHTML = cases.map(c => `
-    <li><button data-id="${esc(c.id)}" aria-current="${c.id === state.current}">
-      <span class="kind">${esc(KIND_LABEL(c.kind))}${c.blocked ? ' <span class="held">· held back</span>' : ""}</span>
+  document.getElementById("count").textContent = `${cases.length} of ${DATA.cases.length} triggers`;
+  document.getElementById("case-list").innerHTML = cases.length ? cases.map(c => `
+    <li><button type="button" data-id="${esc(c.id)}">
+      <span class="kind">${esc(kindLabel(c.kind))}${c.blocked ? ' <span class="held">· held back</span>' : ""}</span>
       <span class="who">${esc(c.merchant)} · ${esc(c.where)}</span>
-    </button></li>`).join("");
+    </button></li>`).join("") : `<li class="none">No message mentions that. Try a shop type or a word like “calls”.</li>`;
+  if (cases.length && !cases.some(c => c.id === state.current)) select(cases[0].id);
+  else markCurrent();
 }
 document.getElementById("case-list").addEventListener("click", event => {
   const button = event.target.closest("button");
   if (button) select(button.dataset.id);
 });
+search.addEventListener("input", renderList);
+document.querySelectorAll("#messages .examples button").forEach(button => button.addEventListener("click", () => { search.value = button.dataset.q; renderList(); }));
 
-function select(id) {
-  state.current = id;
-  const c = DATA.cases.find(item => item.id === id);
-  renderList();
-  renderPhone(c);
-  renderDetail(c);
-}
-
-function renderPhone(c) {
+function phoneHtml(c) {
   const toCustomer = c.audience === "customer";
-  const name = c.blocked ? c.merchant : toCustomer ? c.recipient : `${c.owner} · ${c.merchant}`;
-  const sub = c.blocked ? "nothing sent" : toCustomer ? `from ${c.merchant}` : "from Vera";
-  const thread = c.blocked
-    ? `<div class="held-note"><b>Nothing sent.</b><br>${esc(c.blocked)}.</div>`
+  const name = c.blocked ? c.merchant : toCustomer ? c.recipient : `${c.owner}, ${c.merchant}`;
+  const sub = c.blocked ? "nothing sent" : toCustomer ? `sent for ${c.merchant}` : "from Vera";
+  const initial = (c.blocked ? c.merchant : c.recipient || "?").replace(/^Dr\.?\s*/, "").charAt(0);
+  const body = c.blocked
+    ? `<div class="held-note"><b>Nothing sent.</b><br>${esc(capital(c.blocked))}.</div>`
     : `<div class="bubble out">${richText(c.body)}</div>`;
-  document.getElementById("phone").innerHTML = `
-    <div class="phone-top"><div class="avatar">${esc((c.blocked ? c.merchant : c.recipient || "?").replace(/^Dr\.?\s*/, "").charAt(0))}</div>
-      <div><div class="name">${esc(name)}</div><div class="sub">${esc(sub)}</div></div></div>
+  return `<div class="phone-top"><div class="avatar">${esc(initial)}</div><div><div class="name">${esc(name)}</div><div class="sub">${esc(sub)}</div></div></div>
     ${c.blocked ? "" : `<div class="notif"><small>Notification preview</small>${esc(preview(c.body))}</div>`}
-    <div class="thread">${thread}</div>`;
+    <div class="thread">${body}</div>`;
 }
 
-function renderDetail(c) {
+function detailHtml(c) {
   const tags = [
-    `<span class="tag strong">${esc(KIND_LABEL(c.kind))}</span>`,
+    `<span class="tag strong">${esc(kindLabel(c.kind))}</span>`,
     `<span class="tag">${esc(c.category)}</span>`,
-    `<span class="tag">urgency ${c.urgency}/5</span>`,
+    `<span class="tag">urgency ${c.urgency} of 5</span>`,
     c.audience ? `<span class="tag">to ${c.audience === "customer" ? "a customer" : "the owner"}</span>` : "",
     c.language && c.language !== "en" ? `<span class="tag">language: ${esc(c.language)}</span>` : "",
   ].join("");
   const receipts = c.numbers?.length
-    ? `<ul class="receipts">${c.numbers.map(n => {
+    ? `<ul>${c.numbers.map(n => {
         const source = n.sources[0];
-        const how = source.how === "computed" ? `<span class="how">computed</span>` : "";
         const detail = source.meaning ? esc(source.meaning) : `“${esc(source.value.length > 140 ? source.value.slice(0, 140) + "…" : source.value)}”`;
         return `<li data-n="${n.value}"><span class="n">${esc(n.value)}</span>
-          <span><span class="path">${esc(source.path)}</span>${how}<br><span class="val">${detail}</span></span></li>`;
+          <span><code>${esc(source.path)}</code>${source.how === "computed" ? '<span class="computed">computed</span>' : ""}<br><span class="val">${detail}</span></span></li>`;
       }).join("")}</ul>`
-    : `<p class="empty">${c.blocked ? "No message, so no numbers." : "This message carries no numbers."}</p>`;
+    : `<p class="val">${c.blocked ? "No message, so no numbers." : "This message carries no numbers."}</p>`;
   const payload = Object.entries(c.payload);
-  const snapshot = c.snapshot;
-  document.getElementById("detail").innerHTML = `
-    <div class="detail-head">${tags}</div>
-    <div><h3>Where each number came from</h3>${receipts}</div>
-    ${c.rationale ? `<div><h3>Why this message</h3><p>${esc(c.rationale)}</p></div>` : ""}
-    <div class="two-col">
-      <div><h3>The trigger</h3>${payload.length ? `<dl class="kv">${payload.map(([k, v]) =>
-        `<dt>${esc(k)}</dt><dd>${esc(typeof v === "object" ? JSON.stringify(v) : v)}</dd>`).join("")}</dl>` : `<p class="empty">No details.</p>`}</div>
-      <div><h3>The shop, last 30 days</h3><dl class="kv">
-        <dt>views</dt><dd>${snapshot.views ?? "–"}</dd><dt>calls</dt><dd>${snapshot.calls ?? "–"}</dd>
-        <dt>offers</dt><dd>${esc(snapshot.offers.join(", ") || "none active")}</dd>
-        <dt>signals</dt><dd>${esc(snapshot.signals.join(", ") || "none")}</dd></dl></div>
+  const snap = c.snapshot;
+  return `<div class="tags">${tags}</div>
+    <div><h4>Where each number came from</h4>${receipts}</div>
+    ${c.rationale ? `<div><h4>Why this message</h4><p>${esc(c.rationale)}</p></div>` : ""}
+    <div class="pair">
+      <div><h4>The trigger</h4>${payload.length ? `<dl>${payload.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(typeof v === "object" ? JSON.stringify(v) : v)}</dd>`).join("")}</dl>` : `<p class="val">No details.</p>`}</div>
+      <div><h4>The shop, last 30 days</h4><dl><dt>views</dt><dd>${snap.views ?? "–"}</dd><dt>calls</dt><dd>${snap.calls ?? "–"}</dd>
+        <dt>offers</dt><dd>${esc(snap.offers.join(", ") || "none active")}</dd><dt>signals</dt><dd>${esc(snap.signals.join(", ") || "none")}</dd></dl></div>
     </div>
-    ${c.body ? `<div><h3>Checks</h3>${c.problems.length
-      ? `<p class="checks-bad">${c.problems.map(esc).join("<br>")}</p>`
-      : `<p class="checks-ok">Passed every check: no unknown numbers, links, jargon or banned words, one ask.</p>`}</div>` : ""}`;
+    ${c.body ? (c.problems.length ? `<p class="bad">${c.problems.map(esc).join("<br>")}</p>` : `<p class="ok">Passed every check: no unknown numbers, links, jargon or banned words, and one ask.</p>`) : ""}`;
 }
 
-/* Linking numbers in the bubble to their receipts, both directions. */
+function select(id) {
+  state.current = id;
+  const c = byId(id);
+  markCurrent();
+  document.getElementById("phone").innerHTML = phoneHtml(c);
+  document.getElementById("detail").innerHTML = detailHtml(c);
+}
+
 function light(value, on) {
   document.querySelectorAll(`#phone mark[data-n="${value}"], #detail li[data-n="${value}"]`).forEach(el => el.classList.toggle("lit", on));
 }
@@ -415,41 +579,156 @@ document.getElementById("phone").addEventListener("click", e => {
   const mark = e.target.closest("mark");
   if (!mark) return;
   const row = document.querySelector(`#detail li[data-n="${mark.dataset.n}"]`);
-  if (row) { row.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); light(mark.dataset.n, true); setTimeout(() => light(mark.dataset.n, false), 1400); }
+  if (!row) return;
+  row.scrollIntoView({ block: "nearest", behavior: reduceMotion ? "auto" : "smooth" });
+  light(mark.dataset.n, true);
+  setTimeout(() => light(mark.dataset.n, false), 1400);
 });
-
 renderList();
-select(DATA.cases.find(c => c.body).id);
 
-/* Delta */
+/* ---------- Four things it gets right ---------- */
 const d = DATA.delta;
-const deltaPhone = (label, c, highlight) => `
-  <div class="phone flat"><p class="phone-label">${label}</p>
-    <div class="thread"><div class="bubble out">${richText(c.body, v => highlight.includes(v), () => "changed")}</div></div></div>`;
-document.getElementById("delta").innerHTML = `
-  ${deltaPhone("Version 1 of the shop's data", d.before, [])}
-  <div class="delta-arrow"><b>${d.calls_before} → ${d.calls_after}</b>calls in a newer snapshot of the same shop</div>
-  ${deltaPhone("Version 2 arrives, same trigger", d.after, [String(d.calls_before), String(d.calls_after)])}`;
+const cohortCase = DATA.cases.find(c => c.audience === "merchant" && c.numbers?.some(n => n.sources[0]?.path.startsWith("cohort.median_calls")));
+const cohortNumber = cohortCase.numbers.find(n => n.sources[0].path.startsWith("cohort.median_calls"));
+const languageCase = DATA.cases.find(c => c.audience === "customer" && /hi-en/.test(c.language || ""));
+const heldCases = DATA.cases.filter(c => c.blocked);
+const consentCase = heldCases.find(c => /consent/.test(c.blocked)) || heldCases[0];
+const mini = (body, highlight) => `<div class="mini" data-ui><div class="thread"><div class="bubble out">${richText(body, v => highlight.includes(v), () => "changed")}</div></div></div>`;
+const rows = [
+  {
+    lead: `${d.calls_before} → ${d.calls_after}`,
+    title: "It notices what changed",
+    copy: `The server keeps the last version of every shop's data. When ${d.before.owner}'s calls went from ${d.calls_before} to ${d.calls_after}, the next message said so instead of repeating the last one.`,
+    proof: mini(d.after.body, [String(d.calls_before), String(d.calls_after)]),
+  },
+  {
+    lead: cohortNumber.value,
+    title: "It compares with real neighbours",
+    copy: `“Other clinics get about ${cohortNumber.value} calls” is worked out from the ${s.merchants} shops in the dataset (the ${cohortNumber.sources[0].meaning}), not copied from an industry average.`,
+    proof: mini(cohortCase.body, [cohortNumber.value]),
+  },
+  {
+    lead: "Hi + En",
+    title: "It writes in the customer's language",
+    copy: `Owners always get plain English. Customers get the language they chose: ${languageCase.recipient} asked for a Hindi-English mix, so one short Hindi line goes in, and no more.`,
+    proof: mini(languageCase.body, []),
+  },
+  {
+    lead: `${s.blocked} of ${s.triggers}`,
+    title: "It knows when to say nothing",
+    copy: `${s.blocked} triggers got no message at all. One customer had not agreed to that kind of message, and in the other case the data gave no honest reason to write.`,
+    proof: `<div class="mini" data-ui><div class="thread"><div class="held-note"><b>Nothing sent to ${esc(consentCase.merchant)}.</b><br>${esc(capital(consentCase.blocked))}.</div></div></div>`,
+  },
+];
+document.getElementById("rows").innerHTML = rows.map(row => `
+  <li class="row">
+    <p class="lead-in" data-reveal aria-hidden="true">${esc(row.lead)}</p>
+    <div class="copy" data-reveal style="--i:1"><h3>${esc(row.title)}</h3><p>${esc(row.copy)}</p></div>
+    <div class="proof" data-reveal style="--i:2">${row.proof}</div>
+  </li>`).join("");
 
-/* Conversations */
+/* ---------- Validator demonstrated ---------- */
+document.getElementById("given").innerHTML = `<div class="thread"><div class="bubble out">${richText(d.before.body, () => false)}</div></div>`;
+document.getElementById("breaks").innerHTML = DATA.breaks.map(b => `
+  <tr><th scope="row">${esc(b.rule)}</th><td class="draft">“${esc(b.draft)}”</td>
+  <td class="verdict">${b.verdict.length ? b.verdict.map(v => `<code>${esc(v)}</code>`).join(" ") : "passed"}</td></tr>`).join("");
+const caught = DATA.breaks.filter(b => b.verdict.length).length;
+document.getElementById("field-close").textContent =
+  `${caught} of ${DATA.breaks.length} breaks caught. When a draft is stopped, the plain template goes out in its place. All ${s.composed} messages above passed every rule.`;
+
+/* ---------- Replies ---------- */
+const R = DATA.replies;
+const CLASS_LABEL = { auto_reply: "an auto-reply", commitment: "a yes", opt_out: "a no", off_topic: "off topic", question: "a question", acknowledgement: "a maybe" };
+const LISTENS = {
+  auto_reply: "WhatsApp Business sends canned text while owners are away. Vera waits once, then stops on the second copy instead of burning turns on a machine.",
+  opt_out: "Any of these ends the conversation and stops future messages to that shop.",
+  off_topic: "Requests it can't help with get one polite no and a way back. A second one ends the chat.",
+  commitment: "On a yes it stops asking questions and moves straight to the work.",
+  question: "A question mark at the end, with nothing else matched, gets an honest answer within what it knows.",
+  acknowledgement: "Anything else is a maybe. It waits an hour rather than nudging, and stops after three.",
+};
+const normalise = text => text.trim().toLowerCase().replace(/\s+/g, " ");
+function classify(text) {
+  const t = normalise(text);
+  if (!t) return { name: "silence" };
+  for (const name of ["auto_reply", "opt_out", "off_topic", "commitment"]) {
+    const hit = R.markers[name].find(marker => t.includes(marker));
+    if (hit) return { name, hit };
+  }
+  return { name: text.trim().endsWith("?") ? "question" : "acknowledgement" };
+}
+const examples = document.getElementById("reply-examples");
+for (const [name, outcome] of Object.entries(R.outcomes)) {
+  examples.insertAdjacentHTML("beforeend", `<button type="button" data-text="${esc(outcome.example)}">${esc(CLASS_LABEL[name])}</button>`);
+}
+const replyInput = document.getElementById("reply");
 const MOVE = {
   wait: t => `<div class="event">waits ${Math.round(t.wait_seconds / 3600)} hour${t.wait_seconds === 3600 ? "" : "s"}</div>`,
   end: () => `<div class="event end">ends the conversation</div>`,
   send: t => `<div class="bubble out">${richText(t.body, () => false)}</div>`,
 };
-document.getElementById("convos").innerHTML = DATA.conversations.map(convo => `
-  <div class="convo">
-    <h4>${esc(convo.name.replace("-", " ").replace(/^./, ch => ch.toUpperCase()))}</h4>
-    <p class="blurb">${esc(convo.blurb)}</p>
-    <div class="phone"><div class="thread">${convo.turns.map(turn => `
-      <div class="bubble in">${esc(turn.merchant)}</div>
-      ${MOVE[turn.action](turn)}
-      <p class="why">${esc(turn.rationale)}</p>`).join("")}</div></div>
-  </div>`).join("");
+function renderReply() {
+  const typed = replyInput.value;
+  const result = classify(typed);
+  const verdict = document.getElementById("verdict");
+  const thread = document.getElementById("reply-thread");
+  const markers = document.getElementById("markers");
+  const listens = document.getElementById("listens-copy");
+  if (result.name === "silence") {
+    verdict.textContent = "Type what the owner might send back.";
+    thread.innerHTML = markers.innerHTML = listens.textContent = "";
+    return;
+  }
+  verdict.innerHTML = `Vera reads this as <b>${esc(CLASS_LABEL[result.name])}</b>.`;
+  let i = 0;
+  thread.innerHTML = R.outcomes[result.name].turns.map(turn => `
+    <div class="bubble in" style="--i:${i++}">${esc(typed)}</div>
+    ${MOVE[turn.action](turn).replace("<div ", `<div style="--i:${i++}" `)}
+    <p class="why" style="--i:${i++}">${esc(turn.rationale)}</p>`).join("");
+  thread.classList.remove("swap"); void thread.offsetWidth; thread.classList.add("swap");
+  listens.textContent = LISTENS[result.name];
+  markers.innerHTML = (R.markers[result.name] || []).map(marker => `<li class="${marker === result.hit ? "hit" : ""}">${esc(marker.trim())}</li>`).join("");
+}
+replyInput.addEventListener("input", renderReply);
+examples.addEventListener("click", e => { const b = e.target.closest("button"); if (b) { replyInput.value = b.dataset.text; renderReply(); } });
+renderReply();
 
-/* Held back */
-document.getElementById("quiet").innerHTML = DATA.cases.filter(c => c.blocked).map(c => `
-  <li><b>${esc(KIND_LABEL(c.kind))}</b> for ${esc(c.merchant)}<br><span class="empty">${esc(c.blocked.charAt(0).toUpperCase() + c.blocked.slice(1))}.</span></li>`).join("");
+/* ---------- Where the code goes ---------- */
+const total = DATA.modules.reduce((sum, m) => sum + m.lines, 0);
+const biggest = DATA.modules.reduce((a, b) => (b.lines > a.lines ? b : a));
+const SEG = ["#0d2a1c", "#5f6b64", "#f6e016", "#2f5a45", "#c9d3cc"];
+const SEG_INK = ["#ffffff", "#ffffff", "#0d2a1c", "#ffffff", "#0d2a1c"];
+const bar = document.getElementById("bar");
+bar.setAttribute("aria-label", DATA.modules.map(m => `${m.module}: ${m.lines} lines`).join(", "));
+bar.innerHTML = DATA.modules.map((m, i) => `<div class="seg" style="--lines:${m.lines};--i:${i};background:${SEG[i]};color:${SEG_INK[i]}">${m.lines} lines<small>${esc(m.module)}</small></div>`).join("");
+document.getElementById("bar-notes").innerHTML = DATA.modules.map(m => `<p style="--lines:${m.lines}"><code>${esc(m.module)}</code> ${esc(m.job.charAt(0).toLowerCase() + m.job.slice(1))}</p>`).join("");
+document.getElementById("code-copy").textContent =
+  `${total} lines across the five modules that make a message. The biggest, ${biggest.module} at ${Math.round(biggest.lines / total * 100)}%, is the plain draft that goes out when the model is slow or wrong. Half the code is the safety net.`;
+
+/* ---------- Type-lines: the input is as wide as its text, so the caret follows it ---------- */
+for (const input of document.querySelectorAll("[data-ui].type-line input")) {
+  const mirror = document.createElement("span");
+  mirror.className = "measure";
+  mirror.setAttribute("aria-hidden", "true");
+  input.parentElement.appendChild(mirror);
+  const fit = () => { mirror.textContent = input.value || input.placeholder; input.style.width = `${Math.ceil(mirror.getBoundingClientRect().width) + 16}px`; };
+  input.addEventListener("input", fit);
+  document.fonts?.ready.then(fit);
+  window.addEventListener("resize", fit);
+  fit();
+  input.fit = fit;
+}
+document.querySelectorAll(".examples").forEach(group => group.addEventListener("click", () => document.querySelectorAll("[data-ui].type-line input").forEach(input => input.fit())));
+
+/* ---------- Reveal once on scroll ---------- */
+if ("IntersectionObserver" in window && !reduceMotion) {
+  const io = new IntersectionObserver(entries => {
+    for (const e of entries) if (e.isIntersecting) { e.target.classList.add("is-in"); io.unobserve(e.target); }
+  }, { rootMargin: "0px 0px -10% 0px", threshold: 0.1 });
+  document.querySelectorAll("[data-reveal], [data-ui].bar").forEach(el => io.observe(el));
+} else {
+  document.querySelectorAll("[data-reveal], [data-ui].bar").forEach(el => el.classList.add("is-in"));
+}
 </script>
 </body>
 </html>
